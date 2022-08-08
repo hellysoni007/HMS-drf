@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import User
+from .models import User, Address, Shifts, Rooms
 from .validations import is_contact_valid, check_password_match
 
 
@@ -19,7 +19,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'contact', 'birthdate', 'gender', 'role', 'password', 'password2']
+        fields = ['email', 'first_name', 'last_name', 'contact', 'birthdate', 'gender', 'role', 'password',
+                  'password2']
         extra_kwargs = {
             'password': {'write_only': True}
 
@@ -39,17 +40,45 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=255)
+
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'role', 'birthdate', 'contact', 'email']
+        fields = ['id', 'first_name', 'last_name', 'role', 'birthdate', 'contact', 'email', 'joining_date', 'gender',
+                  'qualifications', 'speciality']
+
+    def validate(self, attrs):
+        contact = attrs.get('contact')
+        is_contact_valid(contact)
+        return attrs
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
+class AddressSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'first_name', 'last_name', 'role', 'email']
+        model = Address
+        fields = ['block_no', 'building_name', 'city', 'state', 'country', 'pincode']
+
+
+class ShiftsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shifts
+        fields = ['allocated_shift', 'shift_start', 'shift_end', 'allocated_place']
+
+
+class RoomSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rooms
+        fields = ['name', 'type', 'no_of_beds', 'assigned_nurses']
+
 
 # class PatientSerializer(serializers.ModelSerializer):
-#     queryset = User.objects.filter(role="Patient")
-#     serializer = UserSerializer(queryset,many=True)
-#     serializer.data
+#     class Meta:
+#         model = User
+#         fields = ['id', 'first_name', 'last_name', 'email', 'contact', 'birthdate', 'role', ]
+
+class PatientSerializer(serializers.ModelSerializer):
+    queryset = User.objects.filter(role="Patient")
+
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'contact', 'birthdate', 'role', ]

@@ -3,14 +3,17 @@ from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email, first_name, last_name, contact, birthdate, gender, role,password, joining_date=None,
+    def create_user(self, email, first_name, last_name, contact, birthdate, gender, role, password, joining_date=None,
                     qualifications=None, speciality=None,
-                    experiance_in_years=None,password2=None):
+                    experiance_in_years=None, password2=None):
         """
-        Creates and saves a User with the given email, first_name, last_name, contact, birthdate, gender,role, joining_date,
+        Creates and saves a User with the given email, first_name, last_name,
+         contact, birthdate, gender,role, joining_date,
         qualifications (if any), speciality(if any),experiance_in_years(if any), password.
 
         """
+        if password != password2:
+            return ValueError('Password and check password does not match')
         if not email:
             raise ValueError('Users must have an email address')
 
@@ -60,7 +63,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, first_name, last_name, contact, birthdate, gender,password):
+    def create_superuser(self, email, first_name, last_name, contact, birthdate, gender, password):
         """
         Creates and saves a superuser with the given email, first_name,last_name and password.
         """
@@ -77,6 +80,7 @@ class UserManager(BaseUserManager):
         )
         user.is_admin = True
         user.save(using=self._db)
+
         return user
 
 
@@ -98,7 +102,7 @@ class User(AbstractBaseUser):
     last_name = models.CharField(max_length=200, blank=False, null=False)
     contact = models.CharField(max_length=12, null=False, blank=False)
     birthdate = models.DateField(verbose_name="DOB", null=False, blank=False)
-    age = models.IntegerField(null=True,blank=True)
+    age = models.IntegerField(null=True, blank=True)
     gender = models.CharField(
         max_length=6,
         choices=GENDER_CHOICES,
@@ -129,12 +133,13 @@ class User(AbstractBaseUser):
     def __str__(self):
         return self.email
 
-    def has_perm(self, perm, obj=None):
+    def has_perm(self):
         """Does the user have a specific permission?"""
         # Simplest possible answer: Yes, always
         return self.is_admin
 
-    def has_module_perms(self, app_label):
+    @staticmethod
+    def has_module_perms():
         """Does the user have permissions to view the app `app_label`?"""
         # Simplest possible answer: Yes, always
         return True
@@ -146,3 +151,58 @@ class User(AbstractBaseUser):
             return False
         else:
             return True
+
+
+class Address(models.Model):
+    user = models.ForeignKey(User, related_name='user', on_delete=models.CASCADE)
+    block_no = models.CharField(max_length=10, verbose_name="Block No./ Flat No.", null=True, blank=True)
+    building_name = models.CharField(verbose_name="Flat Name, Society Name", max_length=50, null=True, blank=True)
+    city = models.CharField(max_length=50, null=True, blank=True)
+    state = models.CharField(max_length=50, null=True, blank=True)
+    country = models.CharField(max_length=50, null=True, blank=True)
+    pincode = models.CharField(max_length=50, null=True, blank=True)
+
+    def __str__(self):
+        return self.user
+
+
+class Shifts(models.Model):
+    # Let shift 1 be from 8 a.m to 3.59 p.m
+    # Let shift 2 be from 4 p.m to 11.59 a.m
+    # Let shift 1 be from 0 a.m to 7.59 a.m
+    SHIFTS = [('1', '1'), ('2', '2'), ('3', '3')]
+    employee = models.ForeignKey(User, related_name='employee', on_delete=models.CASCADE)
+    allocated_shift = models.CharField(max_length=1, choices=SHIFTS)
+    # date = models.DateField(null=True,blank=True)
+    shift_start = models.TimeField()
+    shift_end = models.TimeField()
+    allocated_place = models.CharField(verbose_name='Allocated duty', max_length=20, blank=False, null=False)
+
+    def __str__(self):
+        return f'{self.employee}-{self.allocated_shift}'
+
+    def if_proxy(self):
+        pass
+
+    def add_nurses_to_rooms(self):
+        employee_object = User.objects.get(id=self.employee)
+        if employee_object.role == 'Nurse':
+            room_allocated = self.allocated_place
+            room = Rooms.objects.get(name=room_allocated)
+            room.assigned_nurses.add(self.employee)
+            room.save()
+            return self
+
+
+class Rooms(models.Model):
+    TYPES_OF_ROOMS = [('General', 'General'), ('Special', 'Special')]
+    name = models.CharField(max_length=5, null=False, blank=False, unique=True)
+    type = models.CharField(max_length=7, choices=TYPES_OF_ROOMS, null=True, blank=True)
+    no_of_beds = models.IntegerField(null=False, blank=False)
+    assigned_nurses = models.ManyToManyField(User, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    def get_available_shifts_nurses(self):
+        return self.assigned_nurses.all().count()

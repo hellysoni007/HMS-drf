@@ -1,28 +1,22 @@
-"""hms URL Configuration
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/4.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from django.contrib import admin
 from django.urls import path
 
-from .views import UserRegistrationView, LoginView
+from .views import UserRegistrationView, LoginView, UsersListView, ShiftCreateView, RoomCreateView, \
+    PatientCreateView, UserDetailView, EmployeeShiftView, ViewProfileView, ScheduleView
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name="admin-login"),
     path('register/', UserRegistrationView.as_view(), name="register"),
-    # path('view-all-users/', UsersListView.as_view(), name="view-all-users"),
-    # path('view-all-users/<int:pk>/', UserDetailView.as_view(), name="view-all-users"),
+    path('view-all-users/   ', UsersListView.as_view(), name="view-all-users"),
+    path('view-all-users/<int:pk>/', UserDetailView.as_view(), name="view-all-users"),
+
+    path('update-shift/<int:pk>/', ShiftCreateView.as_view(), name="update-shift"),
+    path('view-shift/', EmployeeShiftView.as_view(), name="view-shift"),
+    path('add-room/', RoomCreateView.as_view(), name="add-room"),
+    path('add-patients/', PatientCreateView.as_view(), name="add-patients"),
+    path('view-profile/', ViewProfileView.as_view(), name="view-profile"),
+    path('update-profile/', ViewProfileView.as_view(), name="update-profile"),
+    path('view-schedule/', ScheduleView.as_view(), name="view-schedule"),
+
     # path('view-all-patients/', PatientListView.as_view(), name="view-all-patients"),
 
 ]

@@ -1,64 +1,125 @@
-from django.contrib.auth import authenticate
-from django.shortcuts import render
-
-# Create your views here.
-from rest_framework import status, mixins, generics
-from rest_framework.permissions import IsAdminUser
+from rest_framework import status, generics
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User
+from .models import User, Rooms
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
-from .serializers import UserRegistrationSerializer, UserLoginSerializer, UserProfileSerializer, UserSerializer
-from .services import LoginRegisterUser
+from .queries import get_user_from_id
+from .serializers import UserSerializer, RoomSerializer, PatientSerializer
+from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile
 
 
 class UserRegistrationView(APIView):
-    permission_classes = [IsAdminUser]
+    """
+    Registration of new employees, permission class IsAdminUser allows only admin to register new employees.
+    """
 
-    def post(self, request, format=None):
+    @permission_classes([IsAdminUser])
+    def post(self, request):
         register_user = LoginRegisterUser.register_new_user(request)
         return register_user
 
 
 class LoginView(APIView):
+    """
+    Login view for all employees, return access token on successful login
+    """
 
-    def post(self, request, format=None):
+    @staticmethod
+    def post(request):
         login = LoginRegisterUser.validate_credentials(request)
         return login
 
 
-class HomeView(APIView):
+class UsersListView(generics.ListAPIView):
+    """
+    View all users for Admin
+    """
+    permission_classes = [IsAdminUser]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-    def get(self, request, format=None):
-        serializer = UserProfileSerializer(request.user)
+
+class UserDetailView(generics.RetrieveUpdateAPIView):
+    """
+    retrieve or update users for Admin
+    """
+    permission_classes = [IsAdminUser]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class EmployeeShiftView(generics.ListAPIView):
+    """
+    All employees and admin has permission to view their shifts
+    """
+
+    @permission_classes([IsDoctor, IsNurse, IsSurgeon, IsReceptionist, IsAdminUser])
+    def get(self, request):
+        view_shift = MyShift.view_shift(request)
+        return view_shift
+
+
+class ShiftCreateView(APIView):
+    """
+    Assign shifts to new employees.
+    """
+    @permission_classes([IsAdminUser])
+    def post(self, request, **kwargs):
+        user = get_user_from_id(kwargs['pk'])
+        add_shift = ManageShifts.add_shift_user(request, user)
+        return add_shift
+
+
+class RoomCreateView(generics.ListCreateAPIView):
+    """
+    Create new rooms, access only to Admins
+    """
+    queryset = Rooms.objects.all()
+    serializer_class = RoomSerializer
+    permission_classes = [IsAdminUser]
+
+
+class ViewProfileView(APIView):
+    """
+    All employees on login can update or view profile
+    """
+    @permission_classes([IsAuthenticated])
+    def get(self, request):
+        view_profile = ManageProfile.view_user_profile(request)
+        return view_profile
+
+    @permission_classes([IsAuthenticated])
+    def put(self, request):
+        update_profile = ManageProfile.update_user_profile(request)
+        return update_profile
+
+
+class PatientCreateView(APIView):
+    """
+    Registration of patients by Receptionist
+    """
+    @permission_classes([IsReceptionist])
+    def post(self, request):
+        serializer = PatientSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
+    def get(self):
+        queryset = User.objects.filter(role="Patient")
+        serializer = PatientSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-# class UsersListView(generics.ListCreateAPIView):
-#     permission_classes = [IsAdminUser]
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#
-#
-# class UserDetailView(generics.RetrieveUpdateAPIView):
-#     permission_classes = [IsAdminUser]
-#     queryset = User.objects.all()
-#     serializer_class = UserSerializer
-#
-#
-# class PatientListView(generics.ListAPIView):
-#     permission_classes = [IsAdminUser]
-#
-#     def get(self, request, format=None):
-#         queryset = User.objects.filter(role="Patient")
-#         serializer = UserSerializer(queryset, many=True)
-#         return Response(serializer.data)
-#
-#
-# class PatientCreateView(generics.CreateAPIView):
-#     permission_classes = [IsReceptionist]
-#
-#     def post(self, request, format=None):
-#         queryset = User.objects.filter(role="Patient")
-#         serializer = UserSerializer(queryset, many=True)
-#         return Response(serializer.data)
+class ScheduleView(generics.ListAPIView):
+    """
+    View full month schedule for all employees
+    """
+    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
+    def get(self, request, *args, **kwargs):
+        monthly_schedule = MyShift.monthly_schedule(request)
+        return monthly_schedule
