@@ -3,10 +3,10 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Rooms
+from .models import User, Rooms, Shifts
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
 from .queries import get_user_from_id
-from .serializers import UserSerializer, RoomSerializer, PatientSerializer
+from .serializers import UserSerializer, RoomSerializer, PatientSerializer, ShiftsSerializer
 from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile
 
 
@@ -37,7 +37,8 @@ class UsersListView(generics.ListAPIView):
     View all users for Admin
     """
     permission_classes = [IsAdminUser]
-    queryset = User.objects.all()
+    queryset = User.objects.all().exclude(role='Admin')
+    print(queryset)
     serializer_class = UserSerializer
 
 
@@ -65,14 +66,30 @@ class ShiftCreateView(APIView):
     """
     Assign shifts to new employees.
     """
+
     @permission_classes([IsAdminUser])
     def post(self, request, **kwargs):
         user = get_user_from_id(kwargs['pk'])
         add_shift = ManageShifts.add_shift_user(request, user)
         return add_shift
 
+    @permission_classes([IsAdminUser])
+    def get(self, request):
+        queryset = Shifts.objects.all()
+        serializer = ShiftsSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class RoomCreateView(generics.ListCreateAPIView):
+    """
+    Create new rooms, access only to Admins
+    """
+    queryset = Rooms.objects.all()
+    serializer_class = RoomSerializer
+    permission_classes = [IsAdminUser]
+
+
+class RoomUpdateView(generics.RetrieveUpdateAPIView):
     """
     Create new rooms, access only to Admins
     """
@@ -85,6 +102,7 @@ class ViewProfileView(APIView):
     """
     All employees on login can update or view profile
     """
+
     @permission_classes([IsAuthenticated])
     def get(self, request):
         view_profile = ManageProfile.view_user_profile(request)
@@ -93,6 +111,8 @@ class ViewProfileView(APIView):
     @permission_classes([IsAuthenticated])
     def put(self, request):
         update_profile = ManageProfile.update_user_profile(request)
+        update_address_profile = ManageProfile.update_user_address_profile(request)
+        update_address_profile
         return update_profile
 
 
@@ -100,6 +120,7 @@ class PatientCreateView(APIView):
     """
     Registration of patients by Receptionist
     """
+
     @permission_classes([IsReceptionist])
     def post(self, request):
         serializer = PatientSerializer(data=request.data)
@@ -119,6 +140,7 @@ class ScheduleView(generics.ListAPIView):
     """
     View full month schedule for all employees
     """
+
     @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def get(self, request, *args, **kwargs):
         monthly_schedule = MyShift.monthly_schedule(request)

@@ -20,7 +20,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['email', 'first_name', 'last_name', 'contact', 'birthdate', 'gender', 'role', 'password',
-                  'password2']
+                  'password2', 'joining_date']
         extra_kwargs = {
             'password': {'write_only': True}
 
@@ -62,7 +62,7 @@ class AddressSerializer(serializers.ModelSerializer):
 class ShiftsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Shifts
-        fields = ['allocated_shift', 'shift_start', 'shift_end', 'allocated_place']
+        fields = ['employee', 'allocated_shift', 'shift_start', 'shift_end', 'allocated_place']
 
 
 class RoomSerializer(serializers.ModelSerializer):

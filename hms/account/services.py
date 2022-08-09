@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Shifts, Rooms, User, Address
-from .queries import get_user_from_mail
+from .queries import get_user_from_mail, get_address_from_user_id
 from .serializers import (
     UserLoginSerializer,
     UserRegistrationSerializer,
@@ -17,6 +17,10 @@ from .serializers import (
 
 
 def get_method_for_user(user):
+    """
+    :param user:
+    :return generated token:
+    """
     refresh = RefreshToken.for_user(user)
 
     return {
@@ -26,6 +30,12 @@ def get_method_for_user(user):
 
 
 def add_address(request, user):
+    """
+    Add address(request.data) for user(user)
+    :param request:
+    :param user:
+    :return errors(if Any):
+    """
     address_serializer = AddressSerializer(data=request.data)
     if address_serializer.is_valid(raise_exception=True):
         def perform_create(address):
@@ -36,6 +46,12 @@ def add_address(request, user):
 
 
 def add_employee_to_room(user, allocated_place):
+    """
+    Allocate room(allocated_place) to employee(user)
+    :param user:
+    :param allocated_place:
+    :return room allocated:
+    """
     get_room = Rooms.objects.get(name=allocated_place)
     get_room.assigned_nurses.add(user)
     get_room.save()
@@ -43,6 +59,10 @@ def add_employee_to_room(user, allocated_place):
 
 
 def get_days_to_display():
+    """
+    Get today's day and last day of this month
+    :return today's day and last day of the current month:
+    """
     today_date = datetime.date.today()
     today_day = today_date.day
     month_last_day = calendar.monthrange(today_date.year, today_date.month)[1]
@@ -50,6 +70,11 @@ def get_days_to_display():
 
 
 def create_next_week_schedule(request):
+    """
+
+    :param request:
+    :return:
+    """
     today_day, month_last_day = get_days_to_display()
     view_shift = MyShift.view_shift(request)
     shift = []
@@ -68,9 +93,8 @@ def get_available_rooms():
     available_shifts_places = []
     for room in rooms:
         counts = room.get_available_shifts_nurses()
-        if counts <= 2:
-            available_shifts_places.append(room)
-
+        if counts <= 3:
+            available_shifts_places.append(room.name)
     return available_shifts_places
 
 
@@ -103,13 +127,14 @@ class LoginRegisterUser:
             else:
                 return Response({'errors': {'non_field_errors': ['Email or password is not valid']}},
                                 status=status.HTTP_404_NOT_FOUND)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ManageShifts:
     @staticmethod
     def add_shift_user(new_request, user):
-        if get_available_rooms():
+        if get_available_rooms() and user.role == 'Nurse':
             if new_request.data['allocated_place'] not in get_available_rooms():
                 return Response({'msg': 'Allocated room already has required staff.'})
 
@@ -120,10 +145,11 @@ class ManageShifts:
                     shift.save(employee=user)
 
                 perform_create(shift_serializer)
-                add_employee_to_room(user, new_request.data['allocated_place'])
-                return Response({'msg': 'Employee has been assigned the shift.'})
+                if user.role == 'Nurse':
+                    add_employee_to_room(user, new_request.data['allocated_place'])
+                return Response({'msg': 'Employee has been assigned the shift successfully.'})
             return Response(shift_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'msg': 'Employee already has assigned shift.'})
+        return Response({'msg': 'Employee already has been assigned shift.'})
 
 
 class MyShift:
@@ -159,15 +185,16 @@ class ManageProfile:
         serializer = UserSerializer(queryset, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'msg': 'Profile updated successfully.'}, status=status.HTTP_201_CREATED)
+            try:
+                queryset2 = get_address_from_user_id(queryset.id)
+                if not queryset2:
+                    Address.objects.create(user=request.user)
+            except Exception as e:
+                print(e)
+                queryset2 = get_address_from_user_id(queryset.id)
+            serializer2 = AddressSerializer(queryset2, data=request.data, partial=True)
+            if serializer2.is_valid(raise_exception=True):
+                serializer2.save()
+                return Response({'msg': 'Profile updated successfully.'}, status=status.HTTP_201_CREATED)
+            return Response(serializer2.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @staticmethod
-    def update_user_address_profile(request):
-        queryset = get_user_from_mail(request.user)
-        queryset2 = Address.objects.get(user=queryset.id)
-        serializer2 = AddressSerializer(queryset2, data=request.data, partial=True)
-        if serializer2.is_valid(raise_exception=True):
-            serializer2.save()
-            return Response({'msg': 'Address updated successfully.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer2.errors, status=status.HTTP_400_BAD_REQUEST)

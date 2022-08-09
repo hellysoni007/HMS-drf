@@ -1,4 +1,4 @@
-from .models import User
+from .models import User, Address
 
 
 def get_user_from_id(user_id):
@@ -10,3 +10,8 @@ def get_user_from_id(user_id):
 def get_user_from_mail(email):
     user = User.objects.get(email=email)
     return user
+
+
+def get_address_from_user_id(user_id):
+    if Address.objects.filter(user=user_id).exists():
+        return Address.objects.get(user=user_id)
