@@ -154,7 +154,7 @@ class User(AbstractBaseUser):
 
 
 class Address(models.Model):
-    user = models.ForeignKey(User, related_name='user', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, related_name='address', on_delete=models.CASCADE)
     block_no = models.CharField(max_length=10, verbose_name="Block No./ Flat No.", null=True, blank=True)
     building_name = models.CharField(verbose_name="Flat Name, Society Name", max_length=50, null=True, blank=True)
     city = models.CharField(max_length=50, null=True, blank=True)
@@ -171,7 +171,7 @@ class Shifts(models.Model):
     # Let shift 2 be from 4 p.m to 11.59 a.m
     # Let shift 1 be from 0 a.m to 7.59 a.m
     SHIFTS = [('1', '1'), ('2', '2'), ('3', '3')]
-    employee = models.ForeignKey(User, related_name='employee', on_delete=models.CASCADE)
+    employee = models.ForeignKey(User, related_name='shift', on_delete=models.CASCADE)
     allocated_shift = models.CharField(max_length=1, choices=SHIFTS)
     # date = models.DateField(null=True,blank=True)
     shift_start = models.TimeField()
@@ -206,3 +206,22 @@ class Rooms(models.Model):
 
     def get_available_shifts_nurses(self):
         return self.assigned_nurses.all().count()
+
+
+class LeaveRequest(models.Model):
+    STATUS_CHOICES = [('ACCEPTED', 'ACCEPTED'), ('REJECTED', 'REJECTED'), ('REQUESTED', 'REQUESTED')]
+    employee = models.ForeignKey(User, related_name='leaves', on_delete=models.CASCADE)
+    applied_on = models.DateField(auto_now_add=True)
+    from_date = models.DateField()
+    to_date = models.DateField()
+    reason = models.TextField()
+    status = models.CharField(max_length=9, choices=STATUS_CHOICES, default='REQUESTED')
+
+    class Meta:
+        ordering = ['-from_date', 'applied_on']
+
+    def __str__(self):
+        return self.employee
+
+    # def get_employees_on_leave_today(self):
+    #     LeaveRequest.objects.get()

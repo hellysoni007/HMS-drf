@@ -1,7 +1,8 @@
 from django.urls import path
 
 from .views import UserRegistrationView, LoginView, UsersListView, ShiftCreateView, RoomCreateView, \
-    PatientCreateView, UserDetailView, EmployeeShiftView, ViewProfileView, ScheduleView,RoomUpdateView
+    PatientCreateView, UserDetailView, EmployeeShiftView, ViewProfileView, ScheduleView, RoomUpdateView, \
+    LeaveListCreateView, LeaveApprovalView
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name="admin-login"),
@@ -17,6 +18,10 @@ urlpatterns = [
     path('profile/', ViewProfileView.as_view(), name="view-profile"),
     path('update-profile/', ViewProfileView.as_view(), name="update-profile"),
     path('my-schedule/', ScheduleView.as_view(), name="view-schedule"),
+    path('my-leaves/', LeaveListCreateView.as_view(), name="my-leaves"),
+    path('my-leaves/<int:pk>/', LeaveListCreateView.as_view(), name="my-leaves"),
+    path('leaves/', LeaveApprovalView.as_view(), name="all-leaves"),
+    path('leaves/<int:pk>/', LeaveApprovalView.as_view(), name="all-leaves"),
 
     # path('view-all-patients/', PatientListView.as_view(), name="view-all-patients"),
 

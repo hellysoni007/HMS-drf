@@ -1,3 +1,4 @@
+from django_filters import filters
 from rest_framework import status, generics
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -7,7 +8,7 @@ from .models import User, Rooms, Shifts
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
 from .queries import get_user_from_id
 from .serializers import UserSerializer, RoomSerializer, PatientSerializer, ShiftsSerializer
-from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile
+from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves
 
 
 class UserRegistrationView(APIView):
@@ -38,7 +39,6 @@ class UsersListView(generics.ListAPIView):
     """
     permission_classes = [IsAdminUser]
     queryset = User.objects.all().exclude(role='Admin')
-    print(queryset)
     serializer_class = UserSerializer
 
 
@@ -70,7 +70,7 @@ class ShiftCreateView(APIView):
     @permission_classes([IsAdminUser])
     def post(self, request, **kwargs):
         user = get_user_from_id(kwargs['pk'])
-        add_shift = ManageShifts.add_shift_user(request, user)
+        add_shift = ManageShifts.add_shift_user(request, user, user_id=kwargs['pk'])
         return add_shift
 
     @permission_classes([IsAdminUser])
@@ -111,8 +111,7 @@ class ViewProfileView(APIView):
     @permission_classes([IsAuthenticated])
     def put(self, request):
         update_profile = ManageProfile.update_user_profile(request)
-        update_address_profile = ManageProfile.update_user_address_profile(request)
-        update_address_profile
+
         return update_profile
 
 
@@ -145,3 +144,33 @@ class ScheduleView(generics.ListAPIView):
     def get(self, request, *args, **kwargs):
         monthly_schedule = MyShift.monthly_schedule(request)
         return monthly_schedule
+
+
+class LeaveListCreateView(generics.ListCreateAPIView):
+    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
+    def get(self, request, *args, **kwargs):
+        show_leaves = MyLeaves.view_leave(request, kwargs)
+        return show_leaves
+
+    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
+    def post(self, request, *args, **kwargs):
+        apply_for_leave = MyLeaves.apply_leave(request)
+        return apply_for_leave
+
+    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
+    def put(self, request, *args, **kwargs):
+        apply_for_leave = MyLeaves.update_leave(request, kwargs['pk'])
+        return apply_for_leave
+
+
+class LeaveApprovalView(generics.ListAPIView):
+
+    @permission_classes([IsAdminUser])
+    def get(self, request, *args, **kwargs):
+        leaves = ManageLeaves.view_leaves(kwargs)
+        return leaves
+
+    @permission_classes([IsAdminUser])
+    def put(self, request, *args, **kwargs):
+        leave_approval = ManageLeaves.approve_disapprove_leave(kwargs, request)
+        return leave_approval
