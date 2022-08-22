@@ -9,8 +9,11 @@ def get_user_from_id(user_id):
 
 
 def get_user_from_mail(email):
-    user = User.objects.get(email=email)
-    return user
+    try:
+        user = User.objects.get(email=email)
+        return user
+    except User.DoesNotExist as e:
+        return None
 
 
 def get_address_from_user_id(user_id):
