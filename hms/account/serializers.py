@@ -1,11 +1,11 @@
 import datetime
 
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
 
-from .models import User, Address, Shifts, Rooms, LeaveRequest
+from .models import User, Address, Shifts, Rooms, LeaveRequest, Substitution
 from .queries import get_user_from_mail, get_user_from_id
+
 from .validations import is_contact_valid, check_password_match
 
 
@@ -57,16 +57,15 @@ class ShiftsSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         allocated_place = attrs.get('allocated_place')
         employee_id = attrs.get('employee')
-        print(f'employee_id{employee_id}')
-        # print(get_user_from_id(employee_id))
 
         employee_object = get_user_from_mail(employee_id)
-        print(employee_object.role)
+        if not employee_object:
+            raise serializers.ValidationError(
+                "Employee does not exist.")
         rooms = Rooms.objects.filter()
         room_list = []
         for room in rooms:
             room_list.append(room.name)
-        print(rooms)
         if (employee_object.role == 'Nurse') and (allocated_place in room_list):
             return attrs
         elif employee_object.role == 'Receptionist' and allocated_place == 'Reception':
@@ -83,7 +82,7 @@ class ShiftsSerializer(serializers.ModelSerializer):
 class LeaveRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
-        fields = ['id', 'employee', 'applied_on', 'from_date', 'to_date', 'reason', 'status']
+        fields = ['id', 'employee', 'applied_on', 'from_date', 'to_date', 'reason', 'status', 'has_substitute']
         read_only_fields = ['id', 'employee', 'applied_on', 'from_date', 'to_date', 'reason']
 
 
@@ -94,11 +93,18 @@ class LeavesSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'applied_on', 'status']
 
     def validate(self, attrs):
+        """
+        :param attrs:
+        :return:
+        """
         from_date = attrs.get('from_date')
-        if from_date < datetime.date.today():
-            raise ValidationError("The date cannot be in the past!")
-        else:
-            return attrs
+        to_date = attrs.get('to_date')
+        if from_date and to_date:
+            if from_date < datetime.date.today():
+                raise ValidationError("The date cannot be in the past!")
+            if from_date > to_date:
+                raise ValidationError("The leaves starting date can not be a dater after leaves ending date.")
+        return attrs
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -137,3 +143,66 @@ class PatientSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'first_name', 'last_name', 'email', 'contact', 'birthdate', 'role', ]
         read_only_fields = ['id', 'role']
+
+
+def get_dates(start, end):
+    step = datetime.timedelta(days=1)
+    date_list = []
+    while start <= end:
+        if start > datetime.date.today():
+            date_list.append(start)
+        start += step
+    return date_list
+
+
+def substitute_on_leave(employee_id, date_check):
+    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id)
+    dates = []
+    for leave in substitute_leaves:
+        start = leave.from_date
+        end = leave.to_date
+        dates = dates + get_dates(start, end)
+    if date_check in dates:
+        return True
+    else:
+        return False
+
+
+class GetSubstitutionSerializer(serializers.ModelSerializer):
+    substitute = serializers.SerializerMethodField()
+
+    def get_substitute(self, obj):
+        return obj.substitute.email
+
+    class Meta:
+        model = Substitution
+        fields = ['id', 'shift', 'for_date', 'substitute']
+        read_only_fields = ['id']
+
+
+class SubstitutionSerializer(serializers.ModelSerializer):
+    substitute = serializers.ChoiceField(
+        choices=User.objects.all())
+
+    class Meta:
+        model = Substitution
+        fields = ['id', 'shift', 'for_date', 'substitute']
+        read_only_fields = ['id']
+
+    def validate(self, attrs):
+        shift_id_get = attrs.get('shift')
+        for_date = attrs.get('for_date')
+        print(for_date)
+        substitute_emp = attrs.get('substitute')
+        if Substitution.objects.filter(shift=shift_id_get, for_date=for_date).exists():
+            raise serializers.ValidationError(
+                "Substitute is already assigned.")
+        print(substitute_emp)
+        if substitute_on_leave(substitute_emp.id, for_date):
+            print("True")
+            raise serializers.ValidationError(
+                "Substitute is also on leave for the day.Enter another substitute.")
+        if shift_id_get.employee.role != substitute_emp.role:
+            raise serializers.ValidationError(
+                "Sorry cannot substitute employee with a different role.")
+        return attrs

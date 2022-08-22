@@ -124,6 +124,7 @@ class User(AbstractBaseUser):
     speciality = models.CharField(max_length=200, null=True, blank=True)
     experiance_in_years = models.IntegerField(verbose_name='Experiance(in yrs)', null=True, blank=True)
     leaves_taken = models.IntegerField(null=True, blank=True)
+    # is_proxy = models.BooleanField(default=False)
 
     objects = UserManager()
 
@@ -173,7 +174,6 @@ class Shifts(models.Model):
     SHIFTS = [('1', '1'), ('2', '2'), ('3', '3')]
     employee = models.ForeignKey(User, related_name='shift', on_delete=models.CASCADE)
     allocated_shift = models.CharField(max_length=1, choices=SHIFTS)
-    # date = models.DateField(null=True,blank=True)
     shift_start = models.TimeField()
     shift_end = models.TimeField()
     allocated_place = models.CharField(verbose_name='Allocated duty', max_length=20, blank=False, null=False)
@@ -192,6 +192,15 @@ class Shifts(models.Model):
             room.assigned_nurses.add(self.employee)
             room.save()
             return self
+
+
+class Substitution(models.Model):
+    shift = models.ForeignKey(Shifts, related_name='shift_to_substitute', on_delete=models.DO_NOTHING)
+    for_date = models.DateField(blank=False)
+    substitute = models.ForeignKey(User,related_name='substitute_employee',on_delete=models.DO_NOTHING)
+
+    def __str__(self):
+        return f'{self.substitute}-{self.for_date}'
 
 
 class Rooms(models.Model):
@@ -216,12 +225,13 @@ class LeaveRequest(models.Model):
     to_date = models.DateField()
     reason = models.TextField()
     status = models.CharField(max_length=9, choices=STATUS_CHOICES, default='REQUESTED')
+    has_substitute = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.employee.email
 
     class Meta:
         ordering = ['-from_date', 'applied_on']
-
-    def __str__(self):
-        return self.employee
 
     # def get_employees_on_leave_today(self):
     #     LeaveRequest.objects.get()

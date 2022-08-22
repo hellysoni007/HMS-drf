@@ -1,14 +1,15 @@
-from django_filters import filters
 from rest_framework import status, generics
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Rooms, Shifts
+from .models import User, Rooms, Shifts, LeaveRequest, Substitution
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
 from .queries import get_user_from_id
-from .serializers import UserSerializer, RoomSerializer, PatientSerializer, ShiftsSerializer
-from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves
+from .serializers import UserSerializer, RoomSerializer, PatientSerializer, ShiftsSerializer, LeaveRequestSerializer, \
+    SubstitutionSerializer, GetSubstitutionSerializer
+from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves, get_dates, \
+    ManageSubstitute
 
 
 class UserRegistrationView(APIView):
@@ -135,7 +136,7 @@ class PatientCreateView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ScheduleView(generics.ListAPIView):
+class MonthlyScheduleView(generics.ListAPIView):
     """
     View full month schedule for all employees
     """
@@ -147,6 +148,7 @@ class ScheduleView(generics.ListAPIView):
 
 
 class LeaveListCreateView(generics.ListCreateAPIView):
+
     @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def get(self, request, *args, **kwargs):
         show_leaves = MyLeaves.view_leave(request, kwargs)
@@ -164,7 +166,6 @@ class LeaveListCreateView(generics.ListCreateAPIView):
 
 
 class LeaveApprovalView(generics.ListAPIView):
-
     @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
         leaves = ManageLeaves.view_leaves(kwargs)
@@ -174,3 +175,32 @@ class LeaveApprovalView(generics.ListAPIView):
     def put(self, request, *args, **kwargs):
         leave_approval = ManageLeaves.approve_disapprove_leave(kwargs, request)
         return leave_approval
+
+
+class GetLatestLeavesViews(generics.ListAPIView):
+    @permission_classes([IsAdminUser])
+    def get(self, request, *args, **kwargs):
+        queryset = LeaveRequest.objects.filter(status="REQUESTED").order_by('-applied_on')
+        serializer = LeaveRequestSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class NeedSubstitution(generics.ListAPIView):
+
+    @permission_classes([IsAdminUser])
+    def get(self, request, *args, **kwargs):
+        need_substitute = ManageSubstitute.view_need_of_substitute()
+        return need_substitute
+
+
+class AssignSubstituteDuty(generics.ListAPIView):
+
+    @permission_classes([IsAdminUser])
+    def get(self, request, *args, **kwargs):
+        substitutions = ManageSubstitute.view_all_substitution()
+        return substitutions
+
+    @permission_classes([IsAdminUser])
+    def post(self, request, *args, **kwargs):
+        substitution = ManageSubstitute.assign_substitution(kwargs, request)
+        return substitution

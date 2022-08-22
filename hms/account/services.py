@@ -6,14 +6,37 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Shifts, Rooms, User, Address, LeaveRequest
+from .models import Shifts, Rooms, User, Address, LeaveRequest, Substitution
 from .queries import get_user_from_mail, get_address_from_user_id, get_user_from_id
 from .serializers import (
     UserLoginSerializer,
     UserRegistrationSerializer,
     AddressSerializer,
     ShiftsSerializer,
-    UserSerializer, LeavesSerializer, LeaveRequestSerializer)
+    UserSerializer, LeavesSerializer, LeaveRequestSerializer, GetSubstitutionSerializer, SubstitutionSerializer)
+
+
+def get_dates(start, end):
+    step = datetime.timedelta(days=1)
+    date_list = []
+    while start <= end:
+        if start > datetime.date.today():
+            date_list.append(str(start))
+        start += step
+    return date_list
+
+
+def substitute_on_leave(employee_id, date_check):
+    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id)
+    dates = []
+    for leave in substitute_leaves:
+        start = leave.from_date
+        end = leave.to_date
+        dates = dates + get_dates(start, end)
+    if date_check in dates:
+        return True
+    else:
+        return False
 
 
 def get_method_for_user(user):
@@ -84,12 +107,24 @@ def get_leaves_list(request):
     return leaves_dates
 
 
-def create_next_month_schedule(request):
-    """
+def check_is_substitute(check_date, request):
+    try:
+        is_substitute = Substitution.objects.get(for_date=check_date, substitute=request.user.id)
+        if is_substitute:
+            print(f'substitution shift: {is_substitute.shift.id}')
+            return is_substitute.shift.id
+    except Substitution.DoesNotExist:
+        return None
 
-    :param request:
-    :return:
-    """
+
+def get_substitute_shift(shift_id):
+    print(shift_id)
+    queryset = Shifts.objects.get(id=shift_id)
+    serializer = ShiftsSerializer(queryset)
+    return serializer.data
+
+
+def create_next_month_schedule(request):
     today_day, month_last_day = get_days_to_display()
     view_shift = MyShift.view_shift(request)
     shift = []
@@ -100,7 +135,11 @@ def create_next_month_schedule(request):
                              month=datetime.date.today().month,
                              day=i)
         daily_shifts['Date'] = date
-        if date in leaves_dates:
+        if check_is_substitute(date, request):
+            sub_shift = get_substitute_shift(check_is_substitute(date, request))
+            daily_shifts['Shift-details'] = sub_shift
+
+        elif date in leaves_dates:
             daily_shifts['Shift-details'] = "Leave"
         else:
             daily_shifts['Shift-details'] = view_shift.data
@@ -157,12 +196,32 @@ class ManageShifts:
         return Response({'msg': 'Employee already has been assigned shift.'})
 
 
+def check_is_substitute_today(request):
+    today = datetime.date.today()
+    is_substitute = Substitution.objects.filter(substitute=request.user.id, for_date=today)
+    if is_substitute:
+        is_substitute = Substitution.objects.get(substitute=request.user.id, for_date=today)
+        shift_data = Shifts.objects.get(id=is_substitute.shift.id)
+        shift_serializer = ShiftsSerializer(shift_data)
+        substitute_shift_data = shift_serializer.data
+        in_place = substitute_shift_data.pop("employee")
+        substitute_shift_data["In Place Of"] = in_place
+        data = {"substitute_shift": substitute_shift_data}
+        return data
+    else:
+        print(False)
+
+
 class MyShift:
     @staticmethod
     def view_shift(request):
         queryset = Shifts.objects.get(employee=request.user)
         shift_serializer = ShiftsSerializer(queryset)
         shift_data = shift_serializer.data
+        if check_is_substitute_today(request):
+            substitute_data = check_is_substitute_today(request)
+            return Response({"Regular Shift": shift_data, "Substitute Shift": substitute_data},
+                            status=status.HTTP_200_OK)
         return Response(shift_data, status=status.HTTP_200_OK)
 
     @staticmethod
@@ -171,7 +230,7 @@ class MyShift:
         queryset = User.objects.get(id=request.user.id)
         serializer = UserSerializer(queryset)
         create_next_month_schedule(request)
-        return Response({'User': serializer.data, 'User-shift': view_shift}, status=status.HTTP_200_OK)
+        return Response({'User': serializer.data, 'Month-schedule': view_shift}, status=status.HTTP_200_OK)
 
 
 class ManageProfile:
@@ -229,6 +288,9 @@ class MyLeaves:
     def update_leave(request, leave_id):
         try:
             queryset = LeaveRequest.objects.get(id=leave_id)
+            if queryset.status != "REQUESTED":
+                return Response({'msg': 'The Leave request can not be updated as it has been reviewed.'},
+                                status=status.HTTP_201_CREATED)
             serializer = LeavesSerializer(queryset, data=request.data, partial=True)
         except LeaveRequest.DoesNotExist as e:
             print(e)
@@ -258,10 +320,55 @@ class ManageLeaves:
         except LeaveRequest.DoesNotExist as e:
             return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
         serializer = LeaveRequestSerializer(queryset, data=request.data, partial=True)
+        if queryset.status == 'ACCEPTED':
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                if request.data['status'] == 'ACCEPTED':
+                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_201_CREATED)
+                elif request.data['status'] == 'REJECTED':
+                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_201_CREATED)
+        elif queryset.status == 'REJECTED':
+            return Response({'msg': 'Please ask employee to send another request.'}, status=status.HTTP_201_CREATED)
+        else:
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                if request.data['status'] == 'ACCEPTED':
+                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_201_CREATED)
+                elif request.data['status'] == 'REJECTED':
+                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ManageSubstitute:
+    @staticmethod
+    def view_need_of_substitute():
+        queryset = LeaveRequest.objects.filter(has_substitute=False, status="ACCEPTED")
+        serializer = LeaveRequestSerializer(queryset, many=True)
+        print(serializer.data)
+        return Response({'Leaves left to assign substitute.': serializer.data}, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def view_all_substitution():
+        queryset = Substitution.objects.all()
+        serializer = GetSubstitutionSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def assign_substitution(kwargs, request):
+        leave_id = kwargs['pk']
+        get_leave = LeaveRequest.objects.get(id=leave_id)
+        request.data['leave'] = get_leave
+        employee = get_leave.employee
+        get_shift = Shifts.objects.get(employee=employee)
+        request.data['shift'] = get_shift.id
+        get_leaves_dates = get_dates(get_leave.from_date, get_leave.to_date)
+        check_date = request.data['for_date']
+        if check_date not in get_leaves_dates:
+            return Response({'msg': "No leaves approved for this date"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = SubstitutionSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            if request.data['status'] == 'ACCEPTED':
-                return Response({'msg': 'Leave approved.'}, status=status.HTTP_201_CREATED)
-            elif request.data['status'] == 'REJECTED':
-                return Response({'msg': 'Leave rejected.'}, status=status.HTTP_201_CREATED)
+            get_leave.has_substitute = True
+            get_leave.save()
+            return Response({'msg': 'Substitution done successfully.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
