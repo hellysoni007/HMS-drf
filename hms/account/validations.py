@@ -1,3 +1,4 @@
+import datetime
 import re
 
 from rest_framework import serializers
@@ -19,5 +20,13 @@ def check_password_match(password, password2):
     # Check if passwords match
     if password != password2:
         raise serializers.ValidationError("Password and confirm Password does not match.")
+    else:
+        return True
+
+
+def check_birthdate(birthdate):
+    #  Check if birthdate entered is not in the future
+    if birthdate > datetime.date.today():
+        raise serializers.ValidationError("Please enter valid birth date.")
     else:
         return True

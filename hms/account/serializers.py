@@ -6,7 +6,7 @@ from rest_framework.exceptions import ValidationError
 from .models import User, Address, Shifts, Rooms, LeaveRequest, Substitution
 from .queries import get_user_from_mail, get_user_from_id
 
-from .validations import is_contact_valid, check_password_match
+from .validations import is_contact_valid, check_password_match, check_birthdate
 
 
 class UserLoginSerializer(serializers.ModelSerializer):
@@ -35,7 +35,9 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         contact = attrs.get('contact')
         password = attrs.get('password')
         password2 = attrs.get('password2')
+        birthdate = attrs.get('birthdate')
         check_password_match(password, password2)
+        check_birthdate(birthdate)
         is_contact_valid(contact)
         return attrs
 
@@ -129,20 +131,6 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rooms
         fields = ['name', 'type', 'no_of_beds', 'assigned_nurses']
-
-
-# class PatientSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = User
-#         fields = ['id', 'first_name', 'last_name', 'email', 'contact', 'birthdate', 'role', ]
-
-class PatientSerializer(serializers.ModelSerializer):
-    queryset = User.objects.filter(role="Patient")
-
-    class Meta:
-        model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'contact', 'birthdate', 'role', ]
-        read_only_fields = ['id', 'role']
 
 
 def get_dates(start, end):

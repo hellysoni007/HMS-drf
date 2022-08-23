@@ -1,7 +1,7 @@
-from django.urls import path
+from django.urls import path, include
 
 from .views import UserRegistrationView, LoginView, UsersListView, ShiftCreateView, RoomCreateView, \
-    PatientCreateView, UserDetailView, EmployeeShiftView, ViewProfileView, RoomUpdateView, \
+    UserDetailView, EmployeeShiftView, ViewProfileView, RoomUpdateView, \
     LeaveListCreateView, LeaveApprovalView, AssignSubstituteDuty, NeedSubstitution, GetLatestLeavesViews, \
     MonthlyScheduleView
 
@@ -31,7 +31,7 @@ urlpatterns = [
     path('my-leaves/<int:pk>/', LeaveListCreateView.as_view(), name="my-leaves"),
 
     # Receptionist apis
-    path('add-patients/', PatientCreateView.as_view(), name="add-patients"),
+    path('add-patients/', include('patients.urls'), name="add-patients"),
 
 
 

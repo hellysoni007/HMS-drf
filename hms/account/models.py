@@ -164,12 +164,12 @@ class Address(models.Model):
     pincode = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self):
-        return self.user
+        return f'{self.user}'
 
 
 class Shifts(models.Model):
     # Let shift 1 be from 8 a.m to 3.59 p.m
-    # Let shift 2 be from 4 p.m to 11.59 a.m
+    # Let shift 2 be from 4 p.m to 11.59 p.m
     # Let shift 1 be from 0 a.m to 7.59 a.m
     SHIFTS = [('1', '1'), ('2', '2'), ('3', '3')]
     employee = models.ForeignKey(User, related_name='shift', on_delete=models.CASCADE)
@@ -180,9 +180,6 @@ class Shifts(models.Model):
 
     def __str__(self):
         return f'{self.employee}-{self.allocated_shift}'
-
-    def if_proxy(self):
-        pass
 
     def add_nurses_to_rooms(self):
         employee_object = User.objects.get(id=self.employee)
