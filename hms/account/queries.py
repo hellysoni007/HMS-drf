@@ -2,10 +2,11 @@ from .models import User, Address
 
 
 def get_user_from_id(user_id):
-    print(user_id)
-    user = User.objects.get(id=user_id)
-    print(user)
-    return user
+    try:
+        user = User.objects.get(id=user_id)
+        return user
+    except User.DoesNotExist as e:
+        return None
 
 
 def get_user_from_mail(email):

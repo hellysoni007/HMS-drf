@@ -124,7 +124,6 @@ class User(AbstractBaseUser):
     speciality = models.CharField(max_length=200, null=True, blank=True)
     experiance_in_years = models.IntegerField(verbose_name='Experiance(in yrs)', null=True, blank=True)
     leaves_taken = models.IntegerField(null=True, blank=True)
-    # is_proxy = models.BooleanField(default=False)
 
     objects = UserManager()
 

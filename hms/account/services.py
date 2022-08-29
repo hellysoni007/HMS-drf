@@ -301,13 +301,37 @@ class MyLeaves:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def get_all_dates(start, end):
+    step = datetime.timedelta(days=1)
+    date_list = []
+    while start <= end:
+        date_list.append(str(start))
+        start += step
+    return date_list
+
+
+def get_leaves_for_date(check_date, queryset):
+    leaves = []
+    for query in queryset:
+        start = query.from_date
+        end = query.to_date
+        dates = get_all_dates(start, end)
+        if check_date in dates:
+            leaves.append(query)
+    return leaves
+
+
 class ManageLeaves:
     @staticmethod
-    def view_leaves(kwargs):
+    def view_leaves(kwargs, request):
         if kwargs:
             queryset = LeaveRequest.objects.get(id=kwargs['pk'])
             serializer = LeaveRequestSerializer(queryset)
-
+        elif request.data:
+            queryset = LeaveRequest.objects.filter(status="ACCEPTED")
+            leaves = get_leaves_for_date(request.data['date'], queryset)
+            serializer = LeaveRequestSerializer(leaves, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             queryset = LeaveRequest.objects.all()
             serializer = LeaveRequestSerializer(queryset, many=True)
@@ -320,6 +344,7 @@ class ManageLeaves:
         except LeaveRequest.DoesNotExist as e:
             return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
         serializer = LeaveRequestSerializer(queryset, data=request.data, partial=True)
+        print(queryset.status)
         if queryset.status == 'ACCEPTED':
             if serializer.is_valid(raise_exception=True):
                 serializer.save()

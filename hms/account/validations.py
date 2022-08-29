@@ -26,6 +26,7 @@ def check_password_match(password, password2):
 
 def check_birthdate(birthdate):
     #  Check if birthdate entered is not in the future
+    print(f'Birthdate {birthdate}')
     if birthdate > datetime.date.today():
         raise serializers.ValidationError("Please enter valid birth date.")
     else:

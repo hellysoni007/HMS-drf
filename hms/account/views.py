@@ -3,13 +3,11 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .models import User, Rooms, Shifts, LeaveRequest, Substitution
+from .models import User, Rooms, Shifts, LeaveRequest
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
 from .queries import get_user_from_id
-from .serializers import UserSerializer, RoomSerializer, ShiftsSerializer, LeaveRequestSerializer, \
-    SubstitutionSerializer, GetSubstitutionSerializer
-from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves, get_dates, \
-    ManageSubstitute
+from .serializers import UserSerializer, RoomSerializer, ShiftsSerializer, LeaveRequestSerializer
+from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves, ManageSubstitute
 
 
 class UserRegistrationView(APIView):
@@ -115,26 +113,6 @@ class ViewProfileView(APIView):
 
         return update_profile
 
-#
-# class PatientCreateView(APIView):
-#     """
-#     Registration of patients by Receptionist
-#     """
-#
-#     @permission_classes([IsReceptionist])
-#     def post(self, request):
-#         serializer = PatientSerializer(data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             serializer.save()
-#             return Response(status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#     @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
-#     def get(self):
-#         queryset = User.objects.filter(role="Patient")
-#         serializer = PatientSerializer(queryset, many=True)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class MonthlyScheduleView(generics.ListAPIView):
     """
@@ -168,7 +146,7 @@ class LeaveListCreateView(generics.ListCreateAPIView):
 class LeaveApprovalView(generics.ListAPIView):
     @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
-        leaves = ManageLeaves.view_leaves(kwargs)
+        leaves = ManageLeaves.view_leaves(kwargs, request)
         return leaves
 
     @permission_classes([IsAdminUser])

@@ -18,6 +18,9 @@ urlpatterns = [
     path('profile/', ViewProfileView.as_view(), name="view-profile"),  # Update and view profile
     path('leaves/', LeaveApprovalView.as_view(), name="all-leaves"),
     path('leaves/<int:pk>/', LeaveApprovalView.as_view(), name="all-leaves"),
+
+    # Cancel leave
+
     path('new-leave-requests/', GetLatestLeavesViews.as_view(), name="new-leaves"),
     path('leaves-to-substitute/', NeedSubstitution.as_view(), name="leaves-accepted"),
     path('substitute/', AssignSubstituteDuty.as_view(), name="leaves-to-substitute"),
@@ -29,12 +32,5 @@ urlpatterns = [
     path('my-schedule/', MonthlyScheduleView.as_view(), name="view-schedule"),
     path('my-leaves/', LeaveListCreateView.as_view(), name="my-leaves"),
     path('my-leaves/<int:pk>/', LeaveListCreateView.as_view(), name="my-leaves"),
-
-    # Receptionist apis
-    path('add-patients/', include('patients.urls'), name="add-patients"),
-
-
-
-    # path('view-all-patients/', PatientListView.as_view(), name="view-all-patients"),
 
 ]
