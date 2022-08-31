@@ -4,9 +4,10 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from account.models import LeaveRequest, User
-from patients.models import Appointment, TimeSlots
+from patients.models import Appointment, TimeSlots, Prescription, Medication
 from patients.serializers import ViewPatientSerializer, PatientRegistrationSerializer, PatientUpdateSerializer, \
-    ViewAvailableTimeSlotsSerializer, BookAppointmentSerializer, UpdateAppointmentSerializer
+    ViewAvailableTimeSlotsSerializer, BookAppointmentSerializer, UpdateAppointmentSerializer, PrescriptionSerializer, \
+    UpdateMedicationSerializer, UpdateMedicinesSerializer, UpdatePatientProfileSerializer, AppointmentsSerializer
 
 
 def get_on_leaves_dates(doctor):
@@ -45,9 +46,7 @@ class ManagePatientRegistration:
     @staticmethod
     def update_patient_profile(kwargs, request):
         queryset = User.objects.get(id=kwargs['pk'])
-        print(queryset)
         serializer = PatientUpdateSerializer(queryset, data=request.data, partial=True)
-        print(serializer)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response({'msg': 'Patient details updated successfully.'}, status=status.HTTP_201_CREATED)
@@ -82,15 +81,118 @@ class ManageAppointments:
         patient_id = kwargs['pk']
         appointment_id = kwargs['pk1']
         try:
-            patient = User.objects.get(id=patient_id)
+            User.objects.get(id=patient_id)
         except User.DoesNotExist as e:
+            print(e)
             return Response({'error': 'Patient does not exist.'})
         try:
             appointments = Appointment.objects.get(id=appointment_id, status="SCHEDULED")
         except Appointment.DoesNotExist as e:
+            print(e)
             return Response({'error': 'No Scheduled appointment found. Book a fresh appointment'})
         serializer = UpdateAppointmentSerializer(appointments, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response({'msg': 'Patient updated successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def show_today_appointments():
+        today = datetime.date.today()
+        queryset = Appointment.objects.filter(date=today).order_by('timeslot')
+        serializer = AppointmentsSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def show_all_appointments():
+        queryset = Appointment.objects.all().order_by('-date', 'timeslot')
+        serializer = AppointmentsSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def filter_doctors_appointments(doctor):
+        today = datetime.date.today()
+        if doctor:
+            queryset = Appointment.objects.filter(doctor__first_name=doctor, date=today).order_by('timeslot')
+        else:
+            queryset = Appointment.objects.filter(date=today).order_by('timeslot')
+        serializer = AppointmentsSerializer(queryset, many=True)
+        if not serializer.data:
+            return Response({"msg": "No appointments to show"}, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ManagePrescription:
+    @staticmethod
+    def generate_new_prescription(request):
+        serializer = PrescriptionSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg': 'Prescription created successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def add_medicine_to_prescription(kwargs, request):
+        prescription_id = kwargs['id']
+        try:
+            Prescription.objects.get(id=prescription_id)
+        except Prescription.DoesNotExist:
+            return Response({'msg': 'Prescription not yet created.'}, status=status.HTTP_201_CREATED)
+        request.data['prescription'] = prescription_id
+        serializer = UpdateMedicationSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg': 'Medicine added successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def update_existing_medicine(kwargs, request):
+        prescription_id = kwargs['id1']
+        medication_id = kwargs['id2']
+        try:
+            medication = Medication.objects.get(id=medication_id)
+        except Medication.DoesNotExist:
+            return Response({'msg': 'Medicine is not yet inserted.'}, status=status.HTTP_404_NOT_FOUND)
+        request.data['prescription'] = prescription_id
+        serializer = UpdateMedicinesSerializer(medication, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'msg': 'Prescription updated successfully.'}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def remove_medicine_from_prescription(kwargs):
+        medication_id = kwargs['id2']
+        medication = Medication.objects.get(id=medication_id)
+        medication.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    def show_prescription(kwargs):
+        patient_id = kwargs['patient_id']
+        queryset = Medication.objects.filter(prescription__patient__id=patient_id)
+        try:
+            prescription = Prescription.objects.get(patient__id=patient_id)
+        except Prescription.DoesNotExist:
+            return Response({"msg": "Patient's prescription is not yet created"}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = UpdateMedicationSerializer(queryset, many=True)
+        days = prescription.for_no_days
+        return Response({"for_no_days": days, "prescription": serializer.data}, status=status.HTTP_200_OK)
+
+
+class ManagePatientDetails:
+    @staticmethod
+    def update_medical_profile(kwargs, request):
+        patient_id = kwargs['id']
+        try:
+            appointment = Appointment.objects.get(patient=patient_id, status="SCHEDULED")
+            appointment.status = "COMPLETED"
+            appointment.save()
+        except Appointment.DoesNotExist as e:
+            print(e)
+        patient = User.objects.get(id=patient_id)
+        serializer = UpdatePatientProfileSerializer(data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(patient_id=patient)
+            return Response({'msg': 'Patient details updated successfully.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

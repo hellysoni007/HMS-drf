@@ -1,14 +1,12 @@
-import datetime
-
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from account.models import Shifts, User
+from account.models import Shifts
 from account.permissions import IsReceptionist, IsDoctor, IsSurgeon, IsNurse
-from .models import Appointment, Prescription, Medication
-from .serializers import ViewAvailableDoctorsSerializer, AppointmentsSerializer, PrescriptionSerializer, \
-    UpdateMedicationSerializer, UpdatePatientProfileSerializer, ShowDoctorsAppointmentsSerializer
-from .services import ManagePatientRegistration, ManageTimeSlots, ManageAppointments
+from .models import Appointment
+from .serializers import ViewAvailableDoctorsSerializer, ShowDoctorsAppointmentsSerializer
+from .services import ManagePatientRegistration, ManageTimeSlots, ManageAppointments, ManagePrescription, \
+    ManagePatientDetails
 
 
 class ShowRegisteredPatientView(generics.ListAPIView):
@@ -22,7 +20,7 @@ class ShowRegisteredPatientView(generics.ListAPIView):
 class PatientRegistrationView(generics.CreateAPIView, generics.UpdateAPIView):
     permission_classes = [IsReceptionist]
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         patient_registered = ManagePatientRegistration.register_patient(request)
         return patient_registered
 
@@ -68,19 +66,16 @@ class ShowAllAppointmentView(generics.ListCreateAPIView):
     permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
-        queryset = Appointment.objects.all().order_by('-date', 'timeslot')
-        serializer = AppointmentsSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        appointments = ManageAppointments.show_all_appointments()
+        return appointments
 
 
 class ShowTodaysAppointmentView(generics.ListCreateAPIView):
     permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
-        today = datetime.date.today()
-        queryset = Appointment.objects.filter(date=today).order_by('timeslot')
-        serializer = AppointmentsSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        appointments = ManageAppointments.show_today_appointments()
+        return appointments
 
 
 class FilterDoctorAppointmentView(generics.RetrieveAPIView):
@@ -88,100 +83,54 @@ class FilterDoctorAppointmentView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         doctor = self.request.query_params.get('first_name')
-        today = datetime.date.today()
-        if doctor:
-            queryset = Appointment.objects.filter(doctor__first_name=doctor, date=today).order_by('timeslot')
-        else:
-            queryset = Appointment.objects.filter(date=today).order_by('timeslot')
-        serializer = AppointmentsSerializer(queryset, many=True)
-        if not serializer.data:
-            return Response({"msg": "No appointments to show"}, status=status.HTTP_200_OK)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        appointments = ManageAppointments.filter_doctors_appointments(doctor)
+        return appointments
 
 
 class UpdatePatientHealthDetails(generics.UpdateAPIView):
     permission_classes = [IsDoctor | IsSurgeon]
 
     def put(self, request, *args, **kwargs):
-        patient_id = kwargs['id']
-        serializer = UpdatePatientProfileSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save(patient=patient_id)
-            return Response({'msg': 'Prescription created successfully.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        update_details = ManagePatientDetails.update_medical_profile(kwargs, request)
+        return update_details
 
 
 class CreateMedicationView(generics.CreateAPIView):
     permission_classes = [IsDoctor | IsSurgeon]
 
     def post(self, request, *args, **kwargs):
-        serializer = PrescriptionSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({'msg': 'Prescription created successfully.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        new_prescription = ManagePrescription.generate_new_prescription(request)
+        return new_prescription
 
 
 class UpdateMedicationView(generics.CreateAPIView, generics.UpdateAPIView, generics.DestroyAPIView):
     permission_classes = [IsDoctor | IsSurgeon]
 
     def post(self, request, *args, **kwargs):
-        prescription_id = kwargs['id1']
-        try:
-            queryset = Prescription.objects.get(id=prescription_id)
-        except Prescription.DoesNotExist as e:
-            return Response({'msg': 'Prescription not yet created.'}, status=status.HTTP_201_CREATED)
-        request.data['prescription'] = prescription_id
-        serializer = UpdateMedicationSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({'msg': 'Medicine added successfully.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        add_medicine = ManagePrescription.add_medicine_to_prescription(kwargs, request)
+        return add_medicine
 
     def put(self, request, *args, **kwargs):
-        print(f'REQUEST {request.user}')
-        prescription_id = kwargs['id1']
-        medication_id = kwargs['id2']
-        try:
-            medication = Medication.objects.get(id=medication_id)
-            # if not medication:
-            #     return Response({'msg': 'Medicine is not yet inserted.'}, status=status.HTTP_404_NOT_FOUND)
-        except Medication.DoesNotExist as e:
-            print(e)
-        request.data['prescription'] = prescription_id
-        serializer = UpdateMedicationSerializer(medication, data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-            return Response({'msg': 'Prescription updated successfully.'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        update_medicine = ManagePrescription.update_existing_medicine(kwargs, request)
+        return update_medicine
 
     def delete(self, *args, **kwargs):
-        medication_id = kwargs['id2']
-        medication = Medication.objects.get(id=medication_id)
-        medication.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        remove_medicine = ManagePrescription.remove_medicine_from_prescription(kwargs)
+        return remove_medicine
 
 
 class ShowMedicationView(generics.ListCreateAPIView):
     permission_classes = [IsDoctor | IsSurgeon | IsNurse]
 
     def get(self, request, *args, **kwargs):
-        patient_id = kwargs['patient_id']
-        queryset = Medication.objects.filter(prescription__patient__id=patient_id)
-        try:
-            prescription = Prescription.objects.get(patient__id=patient_id)
-        except Prescription.DoesNotExist as e:
-            return Response({"msg": "Patient's prescription is not yet created"}, status=status.HTTP_400_BAD_REQUEST)
-        serializer = UpdateMedicationSerializer(queryset, many=True)
-        days = prescription.for_no_days
-        return Response({"for_no_days": days, "prescription": serializer.data}, status=status.HTTP_200_OK)
+        view_prescription = ManagePrescription.show_prescription(kwargs)
+        return view_prescription
 
 
 class ShowDoctorsAppointmentsView(generics.ListAPIView):
     permission_classes = [IsDoctor | IsSurgeon]
 
     def get(self, request, *args, **kwargs):
-        queryset = Appointment.objects.filter(doctor=request.user.id,status="SCHEDULED")
+        queryset = Appointment.objects.filter(doctor=request.user.id, status="SCHEDULED").order_by('timeslot')
         serializer = ShowDoctorsAppointmentsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

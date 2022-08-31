@@ -223,7 +223,6 @@ class UpdateMedicationSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        print(validated_data)
         name = validated_data['name']
         prescription = validated_data['prescription']
         try:
@@ -233,7 +232,16 @@ class UpdateMedicationSerializer(serializers.ModelSerializer):
                     "Medicine already inserted in the prescription.If needed update medicine data.")
         except Medication.DoesNotExist:
             medication = Medication.objects.create(**validated_data)
-        return medication
+            return medication
+
+
+class UpdateMedicinesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medication
+        fields = ['name', 'brand', 'dose_per_day', 'how_to_consume', 'prescription']
+
+    def validate(self, attrs):
+        return attrs
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Shifts, Rooms, User, Address, LeaveRequest, Substitution
-from .queries import get_user_from_mail, get_address_from_user_id, get_user_from_id
+from .queries import get_user_from_mail, get_address_from_user_id
 from .serializers import (
     UserLoginSerializer,
     UserRegistrationSerializer,
@@ -250,7 +250,7 @@ class ManageProfile:
                 address_queryset = get_address_from_user_id(user_queryset.id)
                 if not address_queryset:
                     Address.objects.create(user=request.user)
-            except AttributeError as e:
+            except AttributeError:
                 address_queryset = get_address_from_user_id(user_queryset.id)
             address_serializer = AddressSerializer(address_queryset, data=request.data, partial=True)
             if address_serializer.is_valid(raise_exception=True):
@@ -276,7 +276,7 @@ class MyLeaves:
             try:
                 my_leaves = LeaveRequest.objects.get(id=kwargs['pk'], employee=request.user)
                 serializer = LeavesSerializer(my_leaves)
-            except LeaveRequest.DoesNotExist as e:
+            except LeaveRequest.DoesNotExist:
                 my_leaves = LeaveRequest.objects.filter(employee=request.user)
                 serializer = LeavesSerializer(my_leaves, many=True)
         else:
@@ -362,7 +362,7 @@ class ManageLeaves:
     def approve_disapprove_leave(kwargs, request):
         try:
             queryset = LeaveRequest.objects.get(id=kwargs['pk'])
-        except LeaveRequest.DoesNotExist as e:
+        except LeaveRequest.DoesNotExist:
             return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
         serializer = LeaveRequestSerializer(queryset, data=request.data, partial=True)
         print(queryset.status)

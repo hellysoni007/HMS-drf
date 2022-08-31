@@ -193,7 +193,7 @@ class Shifts(models.Model):
 class Substitution(models.Model):
     shift = models.ForeignKey(Shifts, related_name='shift_to_substitute', on_delete=models.DO_NOTHING)
     for_date = models.DateField(blank=False)
-    substitute = models.ForeignKey(User,related_name='substitute_employee',on_delete=models.DO_NOTHING)
+    substitute = models.ForeignKey(User, related_name='substitute_employee', on_delete=models.DO_NOTHING)
 
     def __str__(self):
         return f'{self.substitute}-{self.for_date}'
@@ -208,9 +208,6 @@ class Rooms(models.Model):
 
     def __str__(self):
         return self.name
-
-    def get_available_shifts_nurses(self):
-        return self.assigned_nurses.all().count()
 
 
 class LeaveRequest(models.Model):
@@ -229,6 +226,3 @@ class LeaveRequest(models.Model):
 
     class Meta:
         ordering = ['-from_date', 'applied_on']
-
-    # def get_employees_on_leave_today(self):
-    #     LeaveRequest.objects.get()
