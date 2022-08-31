@@ -9,18 +9,13 @@ today = datetime.date.today()
 BLOODGROUPS = [('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'), ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'),
                ('O-', 'O-'), ('NA', 'NA')]
 
-PROCEDURE = [('Appointment', 'Appointment'), ('Operation', 'Operation'), ('Admitted', 'Admitted'),
-             ('Discharged', 'Discharged'), ('Reports', 'Reports'), ('Registered', 'Registered')]
+PROCEDURE = [('Operation', 'Operation'), ('Admitted', 'Admitted'), ('Medication', 'Medication'),
+             ('Discharged', 'Discharged'), ('Reports', 'Reports')]
 
 
 class Procedure(models.Model):
     name = models.CharField(
-        max_length=11,
-        choices=PROCEDURE,
-        default='NA'
-    )
-    status = models.CharField(
-        max_length=20
+        max_length=50
     )
 
 
@@ -32,12 +27,11 @@ class PatientProfile(models.Model):
         default='NA'
     )
     disease = models.CharField(max_length=50, blank=True)
-    advised_procedure = models.ForeignKey(Procedure, related_name='current_process', on_delete=models.CASCADE,
-                                          blank=True, null=True)
     has_allergies = models.BooleanField(default=False)
     allergies = models.TextField(blank=True)
     has_medical_history = models.BooleanField(default=False)
     medical_history = models.TextField(blank=True)
+    advise = models.CharField(max_length=50, choices=PROCEDURE, default='NA')
 
 
 class TimeSlots(models.Model):
@@ -54,3 +48,17 @@ class Appointment(models.Model):
     date = models.DateField(null=True)
     timeslot = models.ForeignKey(TimeSlots, related_name='slot', on_delete=models.CASCADE, null=True)
     status = models.CharField(choices=STATUS, max_length=10, default='SCHEDULED')
+
+
+class Prescription(models.Model):
+    patient = models.ForeignKey(User, related_name='prescription', on_delete=models.CASCADE, null=True)
+    for_no_days = models.IntegerField(null=False, blank=False)
+    date = models.DateField(auto_now_add=True, blank=True, null=True)
+
+
+class Medication(models.Model):
+    name = models.CharField(max_length=200, blank=False, null=False)
+    brand = models.CharField(max_length=200, blank=False, null=False)
+    dose_per_day = models.IntegerField(null=False, blank=False)
+    how_to_consume = models.CharField(max_length=200, blank=False, null=False)
+    prescription = models.ForeignKey(Prescription, related_name='Medication', on_delete=models.CASCADE, null=True)

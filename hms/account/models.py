@@ -222,6 +222,7 @@ class LeaveRequest(models.Model):
     reason = models.TextField()
     status = models.CharField(max_length=9, choices=STATUS_CHOICES, default='REQUESTED')
     has_substitute = models.BooleanField(default=False)
+    is_delete = models.BooleanField(default=False)
 
     def __str__(self):
         return self.employee.email

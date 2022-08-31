@@ -3,7 +3,7 @@ from django.urls import path, include
 from .views import UserRegistrationView, LoginView, UsersListView, ShiftCreateView, RoomCreateView, \
     UserDetailView, EmployeeShiftView, ViewProfileView, RoomUpdateView, \
     LeaveListCreateView, LeaveApprovalView, AssignSubstituteDuty, NeedSubstitution, GetLatestLeavesViews, \
-    MonthlyScheduleView
+    MonthlyScheduleView, LeaveDeleteView
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name="admin-login"),
@@ -32,5 +32,6 @@ urlpatterns = [
     path('my-schedule/', MonthlyScheduleView.as_view(), name="view-schedule"),
     path('my-leaves/', LeaveListCreateView.as_view(), name="my-leaves"),
     path('my-leaves/<int:pk>/', LeaveListCreateView.as_view(), name="my-leaves"),
+    path('my-leaves/<int:pk>/delete/', LeaveDeleteView.as_view(), name="delete-leave"),
 
 ]

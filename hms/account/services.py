@@ -27,7 +27,7 @@ def get_dates(start, end):
 
 
 def substitute_on_leave(employee_id, date_check):
-    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id)
+    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id, is_delete=False)
     dates = []
     for leave in substitute_leaves:
         start = leave.from_date
@@ -93,7 +93,7 @@ def get_days_to_display():
 
 
 def get_leaves_list(request):
-    leaves = LeaveRequest.objects.filter(employee=request.user.id)
+    leaves = LeaveRequest.objects.filter(employee=request.user.id, is_delete=False)
     leaves_dates = []
     for leave in leaves:
         leave_start_date = leave.from_date
@@ -288,6 +288,9 @@ class MyLeaves:
     def update_leave(request, leave_id):
         try:
             queryset = LeaveRequest.objects.get(id=leave_id)
+            if queryset.employee != request.user:
+                return Response({'msg': 'Cannot update others leaves.'},
+                                status=status.HTTP_201_CREATED)
             if queryset.status != "REQUESTED":
                 return Response({'msg': 'The Leave request can not be updated as it has been reviewed.'},
                                 status=status.HTTP_201_CREATED)
@@ -299,6 +302,24 @@ class MyLeaves:
             serializer.save()
             return Response({'msg': 'Leave updated successfully.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @staticmethod
+    def delete_leave(request, leave_id):
+        try:
+            today = datetime.date.today()
+            queryset = LeaveRequest.objects.get(id=leave_id)
+            if queryset.employee != request.user:
+                return Response({'msg': 'Cannot delete others leaves.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if queryset.from_date >= today:
+                return Response({'msg': 'The Leave request can not be deleted once date has passed.'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        except LeaveRequest.DoesNotExist as e:
+            print(e)
+            return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
+        queryset.is_delete = True
+        queryset.save()
+        return Response({'msg': 'Leave request deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
 
 
 def get_all_dates(start, end):
@@ -367,7 +388,7 @@ class ManageLeaves:
 class ManageSubstitute:
     @staticmethod
     def view_need_of_substitute():
-        queryset = LeaveRequest.objects.filter(has_substitute=False, status="ACCEPTED")
+        queryset = LeaveRequest.objects.filter(has_substitute=False, status="ACCEPTED", is_delete=False)
         serializer = LeaveRequestSerializer(queryset, many=True)
         print(serializer.data)
         return Response({'Leaves left to assign substitute.': serializer.data}, status=status.HTTP_200_OK)

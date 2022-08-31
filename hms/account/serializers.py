@@ -144,7 +144,7 @@ def get_dates(start, end):
 
 
 def substitute_on_leave(employee_id, date_check):
-    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id)
+    substitute_leaves = LeaveRequest.objects.filter(employee=employee_id, is_delete=False)
     dates = []
     for leave in substitute_leaves:
         start = leave.from_date

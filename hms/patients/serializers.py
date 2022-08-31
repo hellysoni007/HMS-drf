@@ -1,9 +1,11 @@
+import datetime
+
 from rest_framework import serializers
 
 from account.models import User, Address, Shifts
 from account.serializers import AddressSerializer
 from account.validations import is_contact_valid, check_birthdate
-from patients.models import PatientProfile, TimeSlots, Appointment
+from patients.models import PatientProfile, TimeSlots, Appointment, Medication, Prescription
 from patients.validations import check_appointment_date, check_slot_booked, check_if_doctor, check_timeslot
 
 BLOODGROUPS = [('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'), ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'),
@@ -86,7 +88,7 @@ class PatientUpdateSerializer(serializers.ModelSerializer):
 class PatientProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = PatientProfile
-        fields = ['patient_id', 'blood_group', 'disease', 'advised_procedure', 'has_allergies', 'allergies',
+        fields = ['patient_id', 'blood_group', 'disease', 'advise', 'has_allergies', 'allergies',
                   'has_medical_history', 'medical_history']
         read_only_fields = ['patient_id']
 
@@ -176,3 +178,121 @@ class AppointmentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
         fields = ['id', 'date', 'timeslot', 'doctor', 'patient', 'status']
+
+
+class MedicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medication
+        fields = ['name', 'brand', 'dose_per_day', 'how_to_consume']
+
+
+class PrescriptionSerializer(serializers.ModelSerializer):
+    medication = MedicationSerializer(many=True)
+
+    class Meta:
+        model = Prescription
+        fields = ['patient', 'medication', 'for_no_days']
+
+    def validate(self, attrs):
+        today = datetime.date.today()
+        patient = attrs.get('patient')
+        try:
+            get_prescription = Prescription.objects.get(patient=patient, date=today)
+            if get_prescription:
+                raise serializers.ValidationError(
+                    "Prescription already created")
+        except Prescription.DoesNotExist as e:
+            print(e)
+        return attrs
+
+    def create(self, validated_data):
+        medication_data = validated_data.pop('medication')
+        prescription = Prescription.objects.create(**validated_data)
+        print(f'medication data :  {medication_data}')
+        for data in medication_data:
+            Medication.objects.create(prescription=prescription, **data)
+        return prescription
+
+
+class UpdateMedicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medication
+        fields = ['name', 'brand', 'dose_per_day', 'how_to_consume', 'prescription']
+
+    def validate(self, attrs):
+        return attrs
+
+    def create(self, validated_data):
+        print(validated_data)
+        name = validated_data['name']
+        prescription = validated_data['prescription']
+        try:
+            get_medication = Medication.objects.get(name=name, prescription=prescription)
+            if get_medication:
+                raise serializers.ValidationError(
+                    "Medicine already inserted in the prescription.If needed update medicine data.")
+        except Medication.DoesNotExist:
+            medication = Medication.objects.create(**validated_data)
+        return medication
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.prescription = validated_data.get('prescription', instance.prescription)
+        instance.brand = validated_data.get('brand', instance.brand)
+        instance.dose_per_day = validated_data.get('dose_per_day', instance.dose_per_day)
+        instance.how_to_consume = validated_data.get('how_to_consume', instance.how_to_consume)
+        try:
+            check_name = Medication.objects.get(name=instance.name, prescription=instance.prescription)
+            if check_name:
+                raise serializers.ValidationError(
+                    "Medicine with the same name exists in prescription.")
+        except Medication.DoesNotExist:
+            instance.save()
+        return instance
+
+
+class UpdatePatientProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PatientProfile
+        fields = ['patient_id', 'blood_group', 'disease', 'advise', 'has_allergies', 'allergies',
+                  'has_medical_history', 'medical_history']
+        read_only_fields = ['patient_id']
+
+    def validate(self, attrs):
+        disease = attrs.get('disease')
+
+        if not disease:
+            raise serializers.ValidationError("Please mention patient's disease.")
+        advise = attrs.get('advise')
+        if not advise:
+            raise serializers.ValidationError("Please mention further procedure for patient.")
+        has_allergies = attrs.get('has_allergies')
+        allergies = attrs.get('allergies')
+        if has_allergies:
+            if not allergies:
+                raise serializers.ValidationError("Please mention patient's allergies.")
+        has_medical_history = attrs.get('has_medical_history')
+        medical_history = attrs.get('medical_history')
+        if has_medical_history:
+            if not medical_history:
+                raise serializers.ValidationError("Please mention patient's medical history.")
+        return attrs
+
+    def update(self, instance, validated_data):
+        instance.blood_group = validated_data.get('blood_group', instance.blood_group)
+        instance.disease = validated_data.get('disease', instance.disease)
+        instance.advise = validated_data.get('advise', instance.advise)
+        instance.has_allergies = validated_data.get('has_allergies', instance.has_allergies)
+        instance.allergies = validated_data.get('allergies', instance.allergies)
+        instance.has_medical_history = validated_data.get('has_medical_history', instance.has_medical_history)
+        instance.medical_history = validated_data.get('medical_history', instance.medical_history)
+        instance.save()
+        return instance
+
+
+class ShowDoctorsAppointmentsSerializer(serializers.ModelSerializer):
+    patient = PatientDetailsSerializer(many=False)
+
+    class Meta:
+        model = Appointment
+        fields = ['id', 'date', 'timeslot', 'patient', 'status']

@@ -1,3 +1,5 @@
+import datetime
+
 from rest_framework import status, generics
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
@@ -54,9 +56,9 @@ class EmployeeShiftView(generics.ListAPIView):
     """
     All employees and admin has permission to view their shifts
     """
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdminUser]
 
-    @permission_classes([IsDoctor, IsNurse, IsSurgeon, IsReceptionist, IsAdminUser])
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         view_shift = MyShift.view_shift(request)
         return view_shift
 
@@ -118,29 +120,35 @@ class MonthlyScheduleView(generics.ListAPIView):
     """
     View full month schedule for all employees
     """
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
 
-    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def get(self, request, *args, **kwargs):
         monthly_schedule = MyShift.monthly_schedule(request)
         return monthly_schedule
 
 
-class LeaveListCreateView(generics.ListCreateAPIView):
+class LeaveListCreateView(generics.ListCreateAPIView, generics.UpdateAPIView):
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
 
-    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def get(self, request, *args, **kwargs):
         show_leaves = MyLeaves.view_leave(request, kwargs)
         return show_leaves
 
-    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def post(self, request, *args, **kwargs):
         apply_for_leave = MyLeaves.apply_leave(request)
         return apply_for_leave
 
-    @permission_classes([IsReceptionist, IsNurse, IsSurgeon, IsDoctor])
     def put(self, request, *args, **kwargs):
         apply_for_leave = MyLeaves.update_leave(request, kwargs['pk'])
         return apply_for_leave
+
+
+class LeaveDeleteView(generics.UpdateAPIView):
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+
+    def put(self, request, *args, **kwargs):
+        delete_leave = MyLeaves.delete_leave(request, kwargs['pk'])
+        return delete_leave
 
 
 class LeaveApprovalView(generics.ListAPIView):
@@ -158,7 +166,7 @@ class LeaveApprovalView(generics.ListAPIView):
 class GetLatestLeavesViews(generics.ListAPIView):
     @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
-        queryset = LeaveRequest.objects.filter(status="REQUESTED").order_by('-applied_on')
+        queryset = LeaveRequest.objects.filter(status="REQUESTED", is_delete=False).order_by('-applied_on')
         serializer = LeaveRequestSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
