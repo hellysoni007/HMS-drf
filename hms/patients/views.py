@@ -1,6 +1,5 @@
 from rest_framework import generics, status
 from rest_framework.response import Response
-
 from account.models import Shifts
 from account.permissions import IsReceptionist, IsDoctor, IsSurgeon, IsNurse
 from .models import Appointment

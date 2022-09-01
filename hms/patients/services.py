@@ -1,9 +1,8 @@
 import datetime
-
 from rest_framework import status
 from rest_framework.response import Response
-
 from account.models import LeaveRequest, User
+from account.queries import get_user_from_id
 from patients.models import Appointment, TimeSlots, Prescription, Medication
 from patients.serializers import ViewPatientSerializer, PatientRegistrationSerializer, PatientUpdateSerializer, \
     ViewAvailableTimeSlotsSerializer, BookAppointmentSerializer, UpdateAppointmentSerializer, PrescriptionSerializer, \
@@ -68,7 +67,10 @@ class ManageTimeSlots:
 class ManageAppointments:
     @staticmethod
     def book_appointment(kwargs, request):
-        patient = User.objects.get(id=kwargs['pk'])
+        patient_id = kwargs['pk']
+        patient = get_user_from_id(patient_id)
+        if patient is None:
+            return Response({'error': 'Patient does not exist.'})
         request.data['patient'] = patient.id
         serializer = BookAppointmentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
@@ -80,10 +82,7 @@ class ManageAppointments:
     def cancel_appointment(kwargs, request):
         patient_id = kwargs['pk']
         appointment_id = kwargs['pk1']
-        try:
-            User.objects.get(id=patient_id)
-        except User.DoesNotExist as e:
-            print(e)
+        if get_user_from_id(patient_id) is None:
             return Response({'error': 'Patient does not exist.'})
         try:
             appointments = Appointment.objects.get(id=appointment_id, status="SCHEDULED")
