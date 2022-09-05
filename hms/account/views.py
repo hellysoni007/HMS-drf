@@ -37,7 +37,8 @@ class UsersListView(generics.ListAPIView):
     View all users for Admin
     """
     permission_classes = [IsAdminUser]
-    queryset = User.objects.all().exclude(role='Admin')
+    queryset = User.objects.all().exclude(role='Admin').exclude(role='Patient')
+    queryset = queryset.exclude(role='Patient')
     serializer_class = UserSerializer
 
 

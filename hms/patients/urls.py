@@ -6,7 +6,7 @@ from .views import PatientRegistrationView, ViewAvailableTimeSlots, ViewAllDocto
     UpdatePatientHealthDetails, ShowDoctorsAppointmentsView
 
 urlpatterns = [
-    path('', ShowRegisteredPatientView.as_view(), name="patient-registration"),
+    path('', ShowRegisteredPatientView.as_view(), name="patient-registration-display"),
     path('details/<int:pk>/', ShowRegisteredPatientView.as_view(), name="patient-registration"),
     path('register/', PatientRegistrationView.as_view(), name="patient-registration"),
     path('<int:pk>/', PatientRegistrationView.as_view(), name="update-patient"),

@@ -10,7 +10,10 @@ from patients.serializers import ViewPatientSerializer, PatientRegistrationSeria
 
 
 def get_on_leaves_dates(doctor):
-    on_leave = LeaveRequest.objects.filter(employee=doctor, status="ACCEPTED", is_delete=False).order_by('from_date')
+    doctor_id = doctor.id
+    print(f'DOCTOR id {doctor_id}')
+    on_leave = LeaveRequest.objects.filter(employee=doctor_id, status="ACCEPTED", is_delete=False).order_by('from_date')
+    print(on_leave)
     leaves = []
     for leave in on_leave:
         start = leave.from_date
