@@ -9,7 +9,7 @@ today = datetime.date.today()
 BLOODGROUPS = [('A+', 'A+'), ('A-', 'A-'), ('B+', 'B+'), ('B-', 'B-'), ('AB+', 'AB+'), ('AB-', 'AB-'), ('O+', 'O+'),
                ('O-', 'O-'), ('NA', 'NA')]
 
-PROCEDURE = [('Operation', 'Operation'), ('Admitted', 'Admitted'), ('Medication', 'Medication'),
+PROCEDURE = [('Operation', 'Operation'), ('Admit', 'Admit'), ('Medication', 'Medication'),
              ('Discharged', 'Discharged'), ('Reports', 'Reports')]
 
 

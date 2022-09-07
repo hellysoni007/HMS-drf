@@ -58,7 +58,8 @@ class ManagePatientRegistration:
 class ManageTimeSlots:
     @staticmethod
     def get_available_timeslots(request):
-        appointments = Appointment.objects.filter(date=request.data['check-date'], status="SCHEDULED")
+        appointments = Appointment.objects.filter(date=request.data['check-date'], status="SCHEDULED",
+                                                  doctor=request.data['doctor'])
         booked_timeslots = []
         for appointment in appointments:
             booked_timeslots.append(appointment.timeslot.id)
