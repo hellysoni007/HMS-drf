@@ -91,7 +91,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 class LeavesSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
-        fields = ['id', 'applied_on', 'from_date', 'to_date', 'reason', 'status']
+        fields = ['id', 'employee', 'applied_on', 'from_date', 'to_date', 'reason', 'status']
         read_only_fields = ['id', 'applied_on', 'status']
 
     def validate(self, attrs):
@@ -99,13 +99,21 @@ class LeavesSerializer(serializers.ModelSerializer):
         :param attrs:
         :return:
         """
+
         from_date = attrs.get('from_date')
         to_date = attrs.get('to_date')
+        employee = attrs.get('employee')
+        print(employee)
         if from_date and to_date:
             if from_date < datetime.date.today():
                 raise ValidationError("The date cannot be in the past!")
             if from_date > to_date:
                 raise ValidationError("The leaves starting date can not be a dater after leaves ending date.")
+
+        leave = LeaveRequest.objects.filter(from_date=from_date, to_date=to_date, employee=employee)
+        print(leave)
+        if leave:
+            raise ValidationError("Leave already applied.")
         return attrs
 
 

@@ -16,8 +16,11 @@ def check_if_doctor(doctor):
 
 def check_appointment_date(date, doctor):
     from patients.services import get_on_leaves_dates
+    print(date)
+    today = datetime.date.today()
+    print(datetime.date.today())
 
-    if date < datetime.date.today():
+    if date < today:
         raise serializers.ValidationError(
             "Date entered is not valid.")
     leave_dates = get_on_leaves_dates(doctor)
@@ -44,7 +47,7 @@ def check_timeslot(patient, timeslot, date, doctor):
     timeslot_object = TimeSlots.objects.get(id=timeslot.id)
     now_time = datetime.datetime.now()
     now_time = now_time.time()
-    if timeslot_object.start_time < now_time:
+    if timeslot_object.start_time < now_time and date < datetime.date.today():
         raise serializers.ValidationError(
             "TimeSlot cannot be booked as slot time already passed.")
 

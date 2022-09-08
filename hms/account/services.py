@@ -176,7 +176,7 @@ class LoginRegisterUser:
                 return Response({'token': token, 'msg': 'Login Successful'}, status=status.HTTP_200_OK)
             else:
                 return Response({'errors': {'non_field_errors': ['Email or password is not valid']}},
-                                status=status.HTTP_404_NOT_FOUND)
+                                status=status.HTTP_401_UNAUTHORIZED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -184,6 +184,13 @@ class LoginRegisterUser:
 class ManageShifts:
     @staticmethod
     def add_shift_user(new_request, user, user_id):
+        users = User.objects.all().exclude(role='Patient')
+        print(users.values('id'))
+        user_list = users.values('id')
+        print(user_list)
+        print(user_id)
+        if user not in users:
+            return Response({'msg': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not check_user_already_has_shift(user):
             new_request.data['employee'] = user_id
             shift_serializer = ShiftsSerializer(data=new_request.data)
@@ -191,9 +198,10 @@ class ManageShifts:
                 shift_serializer.save()
                 if user.role == 'Nurse':
                     add_employee_to_room(user, new_request.data['allocated_place'])
-                return Response({'msg': 'Employee has been assigned the shift successfully.'})
+                return Response({'msg': 'Employee has been assigned the shift successfully.'},
+                                status=status.HTTP_201_CREATED)
             return Response(shift_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'msg': 'Employee already has been assigned shift.'})
+        return Response({'msg': 'Employee already has been assigned shift.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def check_is_substitute_today(request):
@@ -242,20 +250,22 @@ class ManageProfile:
 
     @staticmethod
     def update_user_profile(request):
-        user_queryset = get_user_from_mail(request.user)
+        user_queryset = User.objects.get(id=request.user.id)
+        print(user_queryset)
         serializer = UserSerializer(user_queryset, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
-            serializer.save()
+            serializer.save(id=request.user.id)
             try:
                 address_queryset = get_address_from_user_id(user_queryset.id)
+                print(address_queryset)
                 if not address_queryset:
-                    Address.objects.create(user=request.user)
+                    Address.objects.create(user=request.user.id)
             except AttributeError:
                 address_queryset = get_address_from_user_id(user_queryset.id)
             address_serializer = AddressSerializer(address_queryset, data=request.data, partial=True)
             if address_serializer.is_valid(raise_exception=True):
                 address_serializer.save()
-                return Response({'msg': 'Profile updated successfully.'}, status=status.HTTP_201_CREATED)
+                return Response({'msg': 'Profile updated successfully.'}, status=status.HTTP_200_OK)
             return Response(address_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -264,6 +274,8 @@ class MyLeaves:
     @staticmethod
     def apply_leave(request):
         user = get_user_from_mail(request.user)
+        print(user)
+        request.data['employee'] = request.user.id
         serializer = LeavesSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(employee=user)
@@ -290,17 +302,17 @@ class MyLeaves:
             queryset = LeaveRequest.objects.get(id=leave_id)
             if queryset.employee != request.user:
                 return Response({'msg': 'Cannot update others leaves.'},
-                                status=status.HTTP_201_CREATED)
+                                status=status.HTTP_400_BAD_REQUEST)
             if queryset.status != "REQUESTED":
                 return Response({'msg': 'The Leave request can not be updated as it has been reviewed.'},
-                                status=status.HTTP_201_CREATED)
+                                status=status.HTTP_400_BAD_REQUEST)
             serializer = LeavesSerializer(queryset, data=request.data, partial=True)
         except LeaveRequest.DoesNotExist as e:
             print(e)
             return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'msg': 'Leave updated successfully.'}, status=status.HTTP_201_CREATED)
+            return Response({'msg': 'Leave updated successfully.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
@@ -311,7 +323,7 @@ class MyLeaves:
             if queryset.employee != request.user:
                 return Response({'msg': 'Cannot delete others leaves.'},
                                 status=status.HTTP_400_BAD_REQUEST)
-            if queryset.from_date >= today:
+            if queryset.from_date <= today:
                 return Response({'msg': 'The Leave request can not be deleted once date has passed.'},
                                 status=status.HTTP_400_BAD_REQUEST)
         except LeaveRequest.DoesNotExist as e:
@@ -346,7 +358,10 @@ class ManageLeaves:
     @staticmethod
     def view_leaves(kwargs, request):
         if kwargs:
-            queryset = LeaveRequest.objects.get(id=kwargs['pk'])
+            try:
+                queryset = LeaveRequest.objects.get(id=kwargs['pk'])
+            except LeaveRequest.DoesNotExist:
+                return Response({'msg': 'Leave request not found'}, status=status.HTTP_404_NOT_FOUND)
             serializer = LeaveRequestSerializer(queryset)
         elif request.data:
             queryset = LeaveRequest.objects.filter(status="ACCEPTED")
@@ -370,18 +385,18 @@ class ManageLeaves:
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 if request.data['status'] == 'ACCEPTED':
-                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_201_CREATED)
+                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_200_OK)
                 elif request.data['status'] == 'REJECTED':
-                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_201_CREATED)
+                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_200_OK)
         elif queryset.status == 'REJECTED':
-            return Response({'msg': 'Please ask employee to send another request.'}, status=status.HTTP_201_CREATED)
+            return Response({'msg': 'Please ask employee to send another request.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
                 if request.data['status'] == 'ACCEPTED':
-                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_201_CREATED)
+                    return Response({'msg': 'Leave approved.'}, status=status.HTTP_200_OK)
                 elif request.data['status'] == 'REJECTED':
-                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_201_CREATED)
+                    return Response({'msg': 'Leave rejected.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -402,14 +417,19 @@ class ManageSubstitute:
     @staticmethod
     def assign_substitution(kwargs, request):
         leave_id = kwargs['pk']
-        get_leave = LeaveRequest.objects.get(id=leave_id)
+        try:
+            get_leave = LeaveRequest.objects.get(id=leave_id)
+        except LeaveRequest.DoesNotExist:
+            return Response({'msg': "Leave Request not found"}, status=status.HTTP_404_NOT_FOUND)
+        from_ = get_leave.from_date
+        to_ = get_leave.to_date
         request.data['leave'] = get_leave
         employee = get_leave.employee
         get_shift = Shifts.objects.get(employee=employee)
         request.data['shift'] = get_shift.id
-        get_leaves_dates = get_dates(get_leave.from_date, get_leave.to_date)
+        get_leaves_dates = get_dates(from_, to_)
         check_date = request.data['for_date']
-        if check_date not in get_leaves_dates:
+        if str(check_date) not in get_leaves_dates:
             return Response({'msg': "No leaves approved for this date"}, status=status.HTTP_400_BAD_REQUEST)
         serializer = SubstitutionSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):

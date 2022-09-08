@@ -1,24 +1,11 @@
-import datetime
-
-from rest_framework import generics, status
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from rest_framework.response import Response
-
-from account.models import Shifts, User
-from account.permissions import IsReceptionist, IsDoctor, IsSurgeon, IsNurse
-from operation.models import Operation, Admission, NurseVisit, DoctorsVisit
-from operation.serializers import ScheduleOperationSerializer, ShowAllOperationsSerializer, \
-    UpdateOperationsSerializer, CreatePatientAdmissionSerializer, DisplayPatientAdmissionsSerializer, \
-    UpdatePatientAdmissionSerializer, CreateNurseVisitSerializer, CreateDoctorsVisitSerializer, \
-    ViewPatientOperationSerializer
+from rest_framework import generics
+from account.permissions import IsReceptionist, IsDoctor, IsSurgeon, IsNurse, IsAdmin
 from operation.services import ManageBedService, ManageTimeSlotsOTService, ManageOperationsService, \
     ManagePatientAdmissionService, ManageSurgeonAvailabilityService, ManagePatientVisitsService, ManagePatientDetails
-from patients.models import PatientProfile
-from patients.serializers import ViewAvailableDoctorsSerializer
 
 
 class CreateUpdateBedView(generics.CreateAPIView, generics.UpdateAPIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
 
     def post(self, request, *args, **kwargs):
         new_bed = ManageBedService.add_new_bed(request)
@@ -38,7 +25,7 @@ class UpdateBedAvailabilityView(generics.UpdateAPIView):
 
 
 class DeleteBedView(generics.DestroyAPIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
 
     def delete(self, request, *args, **kwargs):
         delete_bed = ManageBedService.delete_existing_bed(kwargs)
@@ -46,7 +33,7 @@ class DeleteBedView(generics.DestroyAPIView):
 
 
 class DisplayBedsView(generics.ListAPIView):
-    permission_classes = [IsAdminUser | IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsAdmin | IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
 
     def get(self, request, *args, **kwargs):
         display_bed = ManageBedService.show_all_beds(kwargs)
@@ -55,7 +42,7 @@ class DisplayBedsView(generics.ListAPIView):
 
 # View available beds
 class DisplayAvailableBedsView(generics.ListAPIView):
-    permission_classes = [IsAdminUser | IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsAdmin | IsReceptionist]
 
     def get(self, request, *args, **kwargs):
         if self.request.query_params:
@@ -82,9 +69,10 @@ class ShowOperationsView(generics.ListAPIView):
     permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
+
         if self.request.query_params:
-            op_id = self.request.query_params['op_id']
-            print(op_id)
+            op_id = int(self.request.query_params['op_id'])
+            print(type(op_id))
         else:
             op_id = None
         operations = ManageOperationsService.get_all_operations_details(op_id)
@@ -172,8 +160,8 @@ class CreatePatientAdmissionDetailsView(generics.CreateAPIView):
         return new_admission
 
 
-class UpdatePatientAdmissionDetailsView(generics.UpdateAPIView, generics.ListAPIView):
-    permission_classes = [IsReceptionist]
+class UpdatePatientAdmissionDetailsView(generics.UpdateAPIView):
+    permission_classes = [IsSurgeon | IsDoctor]
 
     def put(self, request, *args, **kwargs):
         update_admission = ManagePatientAdmissionService.update_patient_admission(kwargs, request)
@@ -181,7 +169,7 @@ class UpdatePatientAdmissionDetailsView(generics.UpdateAPIView, generics.ListAPI
 
 
 class ShowPatientAdmissionDetailsView(generics.ListAPIView):
-    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdmin]
 
     def get(self, request, *args, **kwargs):
         admission_details = ManagePatientAdmissionService.get_patient_admission_details(kwargs)
@@ -189,7 +177,7 @@ class ShowPatientAdmissionDetailsView(generics.ListAPIView):
 
 
 class DisplayCurrentlyAdmittedPatientsView(generics.ListAPIView):
-    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdmin]
 
     def get(self, request, *args, **kwargs):
         admitted_patient = ManagePatientAdmissionService.get_currently_admitted_patients()
@@ -197,7 +185,7 @@ class DisplayCurrentlyAdmittedPatientsView(generics.ListAPIView):
 
 
 class DisplayAllAdmittedPatientsView(generics.ListAPIView):
-    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdmin]
 
     def get(self, request, *args, **kwargs):
         admitted_patient = ManagePatientAdmissionService.get_all_admitted_patients()
@@ -205,6 +193,7 @@ class DisplayAllAdmittedPatientsView(generics.ListAPIView):
 
 
 class DisplayAvailableOTTimeslots(generics.ListAPIView):
+    permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
         available_timeslots = ManageTimeSlotsOTService.get_available_timeslots(request)
@@ -221,9 +210,10 @@ class DisplayAvailableSurgeons(generics.ListAPIView):
 
 
 class CreateNurseVisitView(generics.CreateAPIView, generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsNurse]
+    permission_classes = [IsNurse]
 
     def post(self, request, *args, **kwargs):
+        print(request.user.role)
         add_visit = ManagePatientVisitsService.add_visit_nurse(kwargs, request)
         return add_visit
 
@@ -233,7 +223,7 @@ class CreateNurseVisitView(generics.CreateAPIView, generics.ListAPIView):
 
 
 class CreateDoctorVisitView(generics.CreateAPIView, generics.ListAPIView):
-    permission_classes = [IsAuthenticated, IsSurgeon | IsDoctor]
+    permission_classes = [IsSurgeon | IsDoctor]
 
     def post(self, request, *args, **kwargs):
         add_visit_data = ManagePatientVisitsService.add_doctor_visit(kwargs, request)

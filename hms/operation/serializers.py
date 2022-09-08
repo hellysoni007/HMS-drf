@@ -8,7 +8,7 @@ from account.serializers import AddressSerializer
 from operation.models import Bed, Operation, Admission, NurseVisit, DoctorsVisit
 from operation.validations import bed_exists, check_appointment_date
 from patients.models import PatientProfile
-from patients.serializers import ViewPatientSerializer, PatientProfileSerializer
+from patients.serializers import PatientProfileSerializer, ViewPatientSerializer
 
 
 class CreateBedSerializer(serializers.ModelSerializer):
@@ -207,12 +207,11 @@ class UpdatePatientAdmissionSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         today = datetime.datetime.today()
         discharge_date = attrs.get('discharge_date')
+        if not discharge_date:
+            raise serializers.ValidationError("Invalid discharge date.")
         if discharge_date.timestamp() <= today.timestamp():
             raise serializers.ValidationError("Invalid date.")
         return attrs
-
-    def update(self, instance, validated_data):
-        pass
 
 
 class DisplayPatientAdmissionsSerializer(serializers.ModelSerializer):

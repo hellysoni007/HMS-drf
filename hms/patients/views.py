@@ -40,6 +40,7 @@ class ViewAllDoctors(generics.ListCreateAPIView):
     permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
+        print(request.user.role)
         queryset = Shifts.objects.filter(allocated_place="OPD")
         serializer = ViewAvailableDoctorsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -81,7 +82,8 @@ class FilterDoctorAppointmentView(generics.RetrieveAPIView):
     permission_classes = [IsReceptionist]
 
     def get(self, request, *args, **kwargs):
-        doctor = self.request.query_params.get('first_name')
+        doctor = request.query_params.get('first_name')
+        print(doctor)
         appointments = ManageAppointments.filter_doctors_appointments(doctor)
         return appointments
 

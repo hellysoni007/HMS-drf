@@ -1,21 +1,22 @@
 from rest_framework import status, generics
 from rest_framework.decorators import permission_classes
-from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import User, Shifts, LeaveRequest
-from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist
+from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist, IsAdmin
 from .queries import get_user_from_id, get_all_rooms
 from .serializers import UserSerializer, RoomSerializer, ShiftsSerializer, LeaveRequestSerializer
 from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves, ManageSubstitute
 
 
 class UserRegistrationView(APIView):
+    permission_classes = [IsAdmin]
     """
-    Registration of new employees, permission class IsAdminUser allows only admin to register new employees.
+    Registration of new employees, permission class IsAdmin allows only admin to register new employees.
     """
 
-    @permission_classes([IsAdminUser])
+    # @permission_classes([IsAdmin])
     def post(self, request):
         register_user = LoginRegisterUser.register_new_user(request)
         return register_user
@@ -36,7 +37,7 @@ class UsersListView(generics.ListAPIView):
     """
     View all users for Admin
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
     queryset = User.objects.all().exclude(role='Admin').exclude(role='Patient')
     queryset = queryset.exclude(role='Patient')
     serializer_class = UserSerializer
@@ -46,7 +47,7 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
     """
     retrieve or update users for Admin
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -55,7 +56,7 @@ class EmployeeShiftView(generics.ListAPIView):
     """
     All employees and admin has permission to view their shifts
     """
-    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdminUser]
+    permission_classes = [IsReceptionist | IsDoctor | IsSurgeon | IsNurse | IsAdmin]
 
     def get(self, request, *args, **kwargs):
         view_shift = MyShift.view_shift(request)
@@ -63,19 +64,24 @@ class EmployeeShiftView(generics.ListAPIView):
 
 
 class ShiftCreateView(generics.ListCreateAPIView):
+    permission_classes = [IsAdmin]
     """
     Assign shifts to new employees.
     """
 
-    @permission_classes([IsAdminUser])
     def post(self, request, *args, **kwargs):
         user = get_user_from_id(kwargs['pk'])
         add_shift = ManageShifts.add_shift_user(request, user, user_id=kwargs['pk'])
         return add_shift
 
-    @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
-        queryset = Shifts.objects.all()
+        if kwargs:
+            employee = kwargs['pk']
+            queryset = Shifts.objects.filter(employee=employee)
+            if not queryset:
+                return Response({'msg': 'Employee does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            queryset = Shifts.objects.all()
         serializer = ShiftsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -86,7 +92,7 @@ class RoomCreateView(generics.ListCreateAPIView):
     """
     queryset = get_all_rooms()
     serializer_class = RoomSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
 
 
 class RoomUpdateView(generics.RetrieveUpdateAPIView):
@@ -95,21 +101,20 @@ class RoomUpdateView(generics.RetrieveUpdateAPIView):
     """
     queryset = get_all_rooms()
     serializer_class = RoomSerializer
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
 
 
-class ViewProfileView(APIView):
+class ViewProfileView(generics.UpdateAPIView, generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     """
     All employees on login can update or view profile
     """
 
-    @permission_classes([IsAuthenticated])
-    def get(self, request):
+    def get(self, request, *args, **kwargs):
         view_profile = ManageProfile.view_user_profile(request)
         return view_profile
 
-    @permission_classes([IsAuthenticated])
-    def put(self, request):
+    def put(self, request, *args, **kwargs):
         update_profile = ManageProfile.update_user_profile(request)
 
         return update_profile
@@ -151,19 +156,20 @@ class LeaveDeleteView(generics.UpdateAPIView):
 
 
 class LeaveApprovalView(generics.ListAPIView, generics.UpdateAPIView):
-    @permission_classes([IsAdminUser])
+    permission_classes = [IsAdmin]
+
     def get(self, request, *args, **kwargs):
         leaves = ManageLeaves.view_leaves(kwargs, request)
         return leaves
 
-    @permission_classes([IsAdminUser])
     def put(self, request, *args, **kwargs):
         leave_approval = ManageLeaves.approve_disapprove_leave(kwargs, request)
         return leave_approval
 
 
 class GetLatestLeavesViews(generics.ListAPIView):
-    @permission_classes([IsAdminUser])
+    permission_classes = [IsAdmin]
+
     def get(self, request, *args, **kwargs):
         queryset = LeaveRequest.objects.filter(status="REQUESTED", is_delete=False).order_by('-applied_on')
         serializer = LeaveRequestSerializer(queryset, many=True)
@@ -171,21 +177,20 @@ class GetLatestLeavesViews(generics.ListAPIView):
 
 
 class NeedSubstitution(generics.ListAPIView):
+    permission_classes = [IsAdmin]
 
-    @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
         need_substitute = ManageSubstitute.view_need_of_substitute()
         return need_substitute
 
 
 class AssignSubstituteDuty(generics.ListAPIView, generics.CreateAPIView):
+    permission_classes = [IsAdmin]
 
-    @permission_classes([IsAdminUser])
     def get(self, request, *args, **kwargs):
         substitutions = ManageSubstitute.view_all_substitution()
         return substitutions
 
-    @permission_classes([IsAdminUser])
     def post(self, request, *args, **kwargs):
         substitution = ManageSubstitute.assign_substitution(kwargs, request)
         return substitution
