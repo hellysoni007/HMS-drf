@@ -192,7 +192,9 @@ class ManageShifts:
         if user not in users:
             return Response({'msg': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not check_user_already_has_shift(user):
+            new_request.data._mutable = True
             new_request.data['employee'] = user_id
+            new_request.data._mutable = False
             shift_serializer = ShiftsSerializer(data=new_request.data)
             if shift_serializer.is_valid(raise_exception=True):
                 shift_serializer.save()
@@ -223,7 +225,11 @@ def check_is_substitute_today(request):
 class MyShift:
     @staticmethod
     def view_shift(request):
-        queryset = Shifts.objects.get(employee=request.user)
+        try:
+            queryset = Shifts.objects.get(employee=request.user)
+        except Shifts.DoesNotExist:
+            return Response({"Error-msg": 'You have not been assigned shift yet.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         shift_serializer = ShiftsSerializer(queryset)
         shift_data = shift_serializer.data
         if check_is_substitute_today(request):
@@ -259,12 +265,13 @@ class ManageProfile:
                 address_queryset = get_address_from_user_id(user_queryset.id)
                 print(address_queryset)
                 if not address_queryset:
-                    Address.objects.create(user=request.user.id)
+                    print(request.user.id)
+                    Address.objects.create(user=request.user)
             except AttributeError:
                 address_queryset = get_address_from_user_id(user_queryset.id)
             address_serializer = AddressSerializer(address_queryset, data=request.data, partial=True)
             if address_serializer.is_valid(raise_exception=True):
-                address_serializer.save()
+                address_serializer.save(user_id=request.user.id)
                 return Response({'msg': 'Profile updated successfully.'}, status=status.HTTP_200_OK)
             return Response(address_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -275,7 +282,9 @@ class MyLeaves:
     def apply_leave(request):
         user = get_user_from_mail(request.user)
         print(user)
+        request.data._mutable = True
         request.data['employee'] = request.user.id
+        request.data._mutable = False
         serializer = LeavesSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(employee=user)
@@ -423,10 +432,14 @@ class ManageSubstitute:
             return Response({'msg': "Leave Request not found"}, status=status.HTTP_404_NOT_FOUND)
         from_ = get_leave.from_date
         to_ = get_leave.to_date
+        request.data._mutable = True
         request.data['leave'] = get_leave
+        request.data._mutable = False
         employee = get_leave.employee
         get_shift = Shifts.objects.get(employee=employee)
+        request.data._mutable = True
         request.data['shift'] = get_shift.id
+        request.data._mutable = False
         get_leaves_dates = get_dates(from_, to_)
         check_date = request.data['for_date']
         if str(check_date) not in get_leaves_dates:

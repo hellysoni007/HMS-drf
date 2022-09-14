@@ -83,7 +83,7 @@ class FilterDoctorAppointmentView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         doctor = request.query_params.get('first_name')
-        print(doctor)
+        print(f'DOCTOR ------- {doctor}')
         appointments = ManageAppointments.filter_doctors_appointments(doctor)
         return appointments
 
@@ -121,7 +121,7 @@ class UpdateMedicationView(generics.CreateAPIView, generics.UpdateAPIView, gener
 
 
 class ShowMedicationView(generics.ListCreateAPIView):
-    permission_classes = [IsDoctor | IsSurgeon | IsNurse]
+    permission_classes = [IsDoctor | IsSurgeon | IsNurse | IsReceptionist]
 
     def get(self, request, *args, **kwargs):
         view_prescription = ManagePrescription.show_prescription(kwargs)

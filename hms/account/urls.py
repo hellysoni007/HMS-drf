@@ -11,8 +11,9 @@ urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name="register"),  # Done
     path('users/', UsersListView.as_view(), name="view-all-users"),  # Done
     path('users/<int:pk>/', UserDetailView.as_view(), name="view-user-detail"),  # Done
-    path('shifts/', ShiftCreateView.as_view(), name="create-shift"),  # Done
+    path('shifts/<int:pk>/', ShiftCreateView.as_view(), name="create-shift"),  # Done
     path('shifts/<int:pk>/', ShiftCreateView.as_view(), name="update-shift"),  # Done
+    path('shifts/', ShiftCreateView.as_view(), name="update-shift"),  # Done
     path('rooms/', RoomCreateView.as_view(), name="add-room"),  # Done
     path('rooms/<int:pk>/', RoomUpdateView.as_view(), name="update-room"),  # Done
     path('profile/', ViewProfileView.as_view(), name="view-profile"),  # Done
@@ -20,8 +21,8 @@ urlpatterns = [
     path('leaves/<int:pk>/', LeaveApprovalView.as_view(), name="all-leaves"),  # Done
     path('new-leave-requests/', GetLatestLeavesViews.as_view(), name="new-leaves"),  # Done
     path('leaves-to-substitute/', NeedSubstitution.as_view(), name="leaves-accepted"),  # Done
-    path('substitute/', AssignSubstituteDuty.as_view(), name="leaves-to-substitute"),  # Done
-    path('assign-substitute/<int:pk>/', AssignSubstituteDuty.as_view(), name="leaves-substitute"),  # Done
+    path('substitute/', AssignSubstituteDuty.as_view(), name="all-substitutes"),  # Done
+    path('assign-substitute/<int:pk>/', AssignSubstituteDuty.as_view(), name="assign-substitute"),  # Done
 
     # All employees apis
     path('my-shift/', EmployeeShiftView.as_view(), name="view-shift"),  # DONE

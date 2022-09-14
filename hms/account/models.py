@@ -15,10 +15,10 @@ class UserManager(BaseUserManager):
         if password != password2:
             return ValueError('Password and check password does not match')
         if not email:
-            raise ValueError('Users must have an email address')
+            return ValueError('Users must have an email address')
 
         if not role:
-            raise ValueError('Users must have a role')
+            return ValueError('Users must have a role')
 
         if role == 'Doctor':
             is_doctor = True
@@ -63,7 +63,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, first_name, last_name, contact, birthdate, gender, password):
+    def create_superuser(self, email, first_name, last_name, contact, birthdate, gender, password, password2):
         """
         Creates and saves a superuser with the given email, first_name,last_name and password.
         """
@@ -71,6 +71,7 @@ class UserManager(BaseUserManager):
         user = self.create_user(
             email,
             password=password,
+            password2=password2,
             first_name=first_name,
             last_name=last_name,
             contact=contact,
@@ -79,6 +80,7 @@ class UserManager(BaseUserManager):
             role=role
         )
         user.is_admin = True
+        print(user)
         user.save(using=self._db)
 
         return user

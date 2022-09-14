@@ -62,6 +62,7 @@ class ManageTimeSlots:
     @staticmethod
     def get_available_timeslots(request):
         try:
+            print(request.data)
             doctor = User.objects.get(id=request.data['doctor'])
         except User.DoesNotExist:
             return Response({'msg': 'Doctor not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -85,7 +86,9 @@ class ManageAppointments:
         patient = get_user_from_id(patient_id)
         if patient is None:
             return Response({'error': 'Patient does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        request.data._mutable = True
         request.data['patient'] = patient.id
+        request.data._mutable = False
         serializer = BookAppointmentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -102,7 +105,7 @@ class ManageAppointments:
             appointments = Appointment.objects.get(id=appointment_id, status="SCHEDULED")
         except Appointment.DoesNotExist as e:
             return Response({'error': 'No Scheduled appointment found. Book a fresh appointment'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                            status=status.HTTP_404_NOT_FOUND)
         serializer = UpdateAppointmentSerializer(appointments, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -124,14 +127,13 @@ class ManageAppointments:
 
     @staticmethod
     def filter_doctors_appointments(doctor):
-        doctor = User.objects.filter(first_name=doctor, role="Doctor")
-        if not doctor:
-            return Response({"msg": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
+        doctor_exists = User.objects.filter(first_name=doctor, role="Doctor").exists()
         today = datetime.date.today()
-        if doctor:
-            queryset = Appointment.objects.filter(doctor__first_name=doctor, date=today).order_by('timeslot')
+        if doctor_exists:
+            doctor = User.objects.get(first_name=doctor, role="Doctor")
+            queryset = Appointment.objects.filter(doctor=doctor.id).filter(date=today).order_by('timeslot')
         else:
-            queryset = Appointment.objects.filter(date=today).order_by('timeslot')
+            return Response({"msg": "Doctor not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = AppointmentsSerializer(queryset, many=True)
         if not serializer.data:
             return Response({"msg": "No appointments to show"}, status=status.HTTP_200_OK)
@@ -153,7 +155,7 @@ class ManagePrescription:
         try:
             Prescription.objects.get(id=prescription_id)
         except Prescription.DoesNotExist:
-            return Response({'msg': 'Prescription not yet created.'}, status=status.HTTP_201_CREATED)
+            return Response({'msg': 'Prescription not yet created.'}, status=status.HTTP_404_NOT_FOUND)
         request.data['prescription'] = prescription_id
         serializer = UpdateMedicationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
@@ -196,10 +198,10 @@ class ManagePrescription:
             return Response({"msg": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
 
         queryset = Medication.objects.filter(prescription__patient__id=patient_id)
-        try:
-            prescription = Prescription.objects.filter(patient__id=patient_id).order_by('-date')
-        except Prescription.DoesNotExist:
-            return Response({"msg": "Patient's prescription is not yet created"}, status=status.HTTP_400_BAD_REQUEST)
+        prescription = Prescription.objects.filter(patient__id=patient_id).order_by('-date')
+        if not prescription:
+            return Response({"msg": "Patient's prescription is not yet created"},
+                            status=status.HTTP_400_BAD_REQUEST)
         serializer = UpdateMedicationSerializer(queryset, many=True)
         days = prescription[0].for_no_days
         return Response({"for_no_days": days, "prescription": serializer.data}, status=status.HTTP_200_OK)
