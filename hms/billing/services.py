@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from account.models import User
+from account.queries import get_user_from_id
 from billing.models import SURGERY_CHARGE, ADMISSION_CHARGE, Bill
 from billing.serializers import CreateBillSerializer
 
@@ -27,9 +28,8 @@ class ManageBills:
         if request.data:
             patient = request.data['patient']
             today = datetime.date.today()
-            try:
-                patient_obj = User.objects.get(id=patient)
-            except User.DoesNotExist:
+            user = get_user_from_id(patient)
+            if not user:
                 return Response({'error-msg': 'Patient does not exist'}, status=status.HTTP_404_NOT_FOUND)
             try:
                 appointment = Appointment.objects.get(patient=patient, status="COMPLETED", date=today)
@@ -62,9 +62,8 @@ class ManageBills:
         if request.data:
             patient = request.data['patient']
             today = datetime.date.today()
-            try:
-                patient_obj = User.objects.get(id=patient)
-            except User.DoesNotExist:
+            user = get_user_from_id(patient)
+            if not user:
                 return Response({'error-msg': 'Patient does not exist'}, status=status.HTTP_404_NOT_FOUND)
             try:
                 operation = Operation.objects.get(patient=patient, status="COMPLETED", date__lte=today)

@@ -5,6 +5,7 @@ from rest_framework import serializers
 from account.models import Rooms, User
 from account.queries import get_user_from_id
 from account.serializers import AddressSerializer
+from account.services import email_service
 from operation.models import Bed, Operation, Admission, NurseVisit, DoctorsVisit
 from operation.validations import bed_exists, check_appointment_date
 from patients.models import PatientProfile
@@ -187,12 +188,18 @@ class CreatePatientAdmissionSerializer(serializers.ModelSerializer):
         bed.is_available = False
         bed.save()
 
-        operation_obj = Operation.objects.get(patient=patient)
+        operation_obj = Operation.objects.get(patient=patient, status="SCHEDULED")
         admission_date = operation_obj.date - datetime.timedelta(days=1)
         print(admission_date)
         # raise serializers.ValidationError("Check details")
         # Admission date will be one day prior to operation date
         created_obj = Admission.objects.create(admission_date=admission_date, **validated_data)
+        mail_to = patient.email
+        mail_subject = "Patient admission details for Operation"
+        mail_body = f'Dear {patient.first_name},\nYour operation of {operation_obj.operation_name} is scheduled on' \
+                    f' {operation_obj.date} by Doctor:' \
+                    f'{operation_obj.doctor.first_name}. And you need to get admitted for the same on {admission_date}'
+        email_service([mail_to], mail_subject, mail_body)
         return created_obj
 
 

@@ -1,11 +1,15 @@
 import datetime
 import calendar
+from django.conf import settings
+from django.core.mail import send_mail
 
 from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .contants import USER_REGISTRATION_SUCCESS_MSG, USER_REGISTRATION_SUCCESS_MAIL_MSG, SUBSTITUTION_ASSIGNED_SUBJECT, \
+    SUBSTITUTION_SUCCESS, SHIFT_ASSIGNED_SUCCESS
 from .models import Shifts, Rooms, User, Address, LeaveRequest, Substitution
 from .queries import get_user_from_mail, get_address_from_user_id
 from .serializers import (
@@ -14,6 +18,16 @@ from .serializers import (
     AddressSerializer,
     ShiftsSerializer,
     UserSerializer, LeavesSerializer, LeaveRequestSerializer, GetSubstitutionSerializer, SubstitutionSerializer)
+
+
+def email_service(to, subject, body):
+    send_mail(
+        subject,
+        body,
+        settings.EMAIL_HOST_USER,
+        to,
+        fail_silently=False,
+    )
 
 
 def get_dates(start, end):
@@ -115,10 +129,8 @@ def get_leaves_list(request):
         leave_end_date = leave.to_date
         delta = datetime.timedelta(days=1)
         while leave_start_date <= leave_end_date:
-            print(leave_end_date.strftime("%Y-%m-%d"))
             leaves_dates.append(leave_end_date)
             leave_start_date += delta
-    print(leaves_dates)
     return leaves_dates
 
 
@@ -131,7 +143,6 @@ def check_is_substitute(check_date, request):
     try:
         is_substitute = Substitution.objects.get(for_date=check_date, substitute=request.user.id)
         if is_substitute:
-            print(f'substitution shift: {is_substitute.shift.id}')
             return is_substitute.shift.id
     except Substitution.DoesNotExist:
         return None
@@ -173,7 +184,6 @@ def create_next_month_schedule(request):
         else:
             daily_shifts['Shift-details'] = view_shift.data
         shift.append(daily_shifts)
-    print(shift)
     return shift
 
 
@@ -196,10 +206,15 @@ class LoginRegisterUser:
         output: Response(Success or error msg)
         """
         serializer = UserRegistrationSerializer(data=request.data)
+        mail_to = request.data['email']
+        password = request.data['password']
         if serializer.is_valid(raise_exception=True):
             user = serializer.save()
             add_address(request, user)
-            return Response({'msg': 'Registration Successful'},
+            mail_body = USER_REGISTRATION_SUCCESS_MAIL_MSG + f'\nYour Credentials are:\nEmail: {mail_to}\nPassword: ' \
+                                                             f'{password}'
+            email_service([mail_to], USER_REGISTRATION_SUCCESS_MSG, mail_body)
+            return Response({'msg': USER_REGISTRATION_SUCCESS_MSG},
                             status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -234,7 +249,7 @@ class ManageShifts:
         output: Response(Success or error msg)
         """
         users = User.objects.all().exclude(role='Patient')
-        user_list = users.values('id')
+        users.values('id')
         if user not in users:
             return Response({'msg': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not check_user_already_has_shift(user):
@@ -246,7 +261,7 @@ class ManageShifts:
                 shift_serializer.save()
                 if user.role == 'Nurse':
                     add_employee_to_room(user, new_request.data['allocated_place'])
-                return Response({'msg': 'Employee has been assigned the shift successfully.'},
+                return Response({'msg': SHIFT_ASSIGNED_SUCCESS},
                                 status=status.HTTP_201_CREATED)
             return Response(shift_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response({'msg': 'Employee already has been assigned shift.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -551,14 +566,10 @@ class ManageSubstitute:
             return Response({'msg': "Leave Request not found"}, status=status.HTTP_404_NOT_FOUND)
         from_ = get_leave.from_date
         to_ = get_leave.to_date
-        request.data._mutable = True
         request.data['leave'] = get_leave
-        request.data._mutable = False
         employee = get_leave.employee
         get_shift = Shifts.objects.get(employee=employee)
-        request.data._mutable = True
         request.data['shift'] = get_shift.id
-        request.data._mutable = False
         get_leaves_dates = get_dates(from_, to_)
         check_date = request.data['for_date']
         if str(check_date) not in get_leaves_dates:
@@ -568,5 +579,7 @@ class ManageSubstitute:
             serializer.save()
             get_leave.has_substitute = True
             get_leave.save()
-            return Response({'msg': 'Substitution done successfully.'}, status=status.HTTP_201_CREATED)
+            mail_body = f'You are assigned substitution duty on {check_date} for shift :{get_shift.id}'
+            email_service([request.data['substitute']], SUBSTITUTION_ASSIGNED_SUBJECT, mail_body)
+            return Response({'msg': SUBSTITUTION_SUCCESS}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

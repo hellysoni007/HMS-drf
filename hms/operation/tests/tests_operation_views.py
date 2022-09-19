@@ -8,7 +8,7 @@ from account.models import Rooms, Address, User
 from operation.models import Bed, Operation, Admission, NurseVisit
 from patients.models import TimeSlots, PatientProfile
 
-json_data = open('account/tests/test_data.json')
+json_data = open('operation/tests/test_data.json')
 data1 = json.load(json_data)
 json_data.close()
 
@@ -69,12 +69,13 @@ def create_admin_user():
 
 @pytest.fixture
 @pytest.mark.django_db
-def create_shift_fixture(api_client, create_admin_user1, create_surgeon, create_rooms):
+def create_shift_fixture(api_client, create_admin_user, create_surgeon, create_rooms):
     user = create_surgeon
 
     data = data1["create_shift_fixture_data"]
+    print(data)
     url = reverse('update-shift', kwargs={'pk': user.id})
-    api_client.force_authenticate(user=create_admin_user1)
+    api_client.force_authenticate(user=create_admin_user)
     response = api_client.post(url, data=data)
     return response
 
@@ -352,7 +353,7 @@ class TestScheduleOperationView:
         data = {
             "doctor": doctor,
             "operation_name": "Hernia",
-            "date": "2022-09-16",
+            "date": "2022-09-19",
             "timeslot": timeslot
         }
         url = reverse('schedule-operation', kwargs={'patient_id': patient_id})

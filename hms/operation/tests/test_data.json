@@ -21,6 +21,6 @@
     "discharge_date": "2022-09-13"
   },
   "is_normal_data": {
-    "is_normal": True
+    "is_normal": "True"
   }
 }

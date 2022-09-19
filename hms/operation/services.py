@@ -5,6 +5,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from account.models import Shifts, User
+from account.queries import get_user_from_id
+from account.services import email_service
 from operation.models import Bed, Operation, Admission, NurseVisit, DoctorsVisit
 from operation.serializers import CreateBedSerializer, UpdateBedSerializer, UpdateBedAvailabilitySerializer, \
     DisplayBedSerializer, ScheduleOperationSerializer, ShowAllOperationsSerializer, UpdateOperationsSerializer, \
@@ -146,6 +148,21 @@ class ManageTimeSlotsOTService:
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+def operation_scheduled_mail(patient, data):
+    operation_date = data['date']
+    operation_doctor = data['doctor']
+    doctor = get_user_from_id(operation_doctor)
+    operation_name = data['operation_name']
+    operation_timeslot = data['timeslot']
+    timeslot = TimeSlots.objects.get(id=operation_timeslot)
+    mail_to = patient.email
+    mail_subject = "Operation scheduled successfully"
+    mail_body = f'Dear {patient.first_name},\nYour operation of {operation_name} is scheduled on {operation_date} ' \
+                f'by Doctor:' \
+                f'{doctor.first_name} at time:{timeslot.start_time}'
+    email_service([mail_to], mail_subject, mail_body)
+
+
 class ManageOperationsService:
     @staticmethod
     def schedule_operations(kwargs, request):
@@ -155,6 +172,7 @@ class ManageOperationsService:
         output: Response(Success or error msg)
         """
         patient_id = kwargs['patient_id']
+        patient = get_user_from_id(patient_id)
         try:
             patient_profile = PatientProfile.objects.get(patient_id=patient_id)
             if patient_profile.advise != 'Operation':
@@ -162,12 +180,13 @@ class ManageOperationsService:
                                 status=status.HTTP_400_BAD_REQUEST)
         except PatientProfile.DoesNotExist:
             return Response({'error-msg': 'Invalid patient Id.'}, status=status.HTTP_404_NOT_FOUND)
-        request.data._mutable = True
+        # request.data._mutable = True
         request.data['patient'] = patient_id
-        request.data._mutable = False
+        # request.data._mutable = False
         serializer = ScheduleOperationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(status='SCHEDULED')
+            operation_scheduled_mail(patient, request.data)
             return Response({'msg': 'Operation scheduled successfully.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -328,17 +347,18 @@ class ManagePatientAdmissionService:
     def new_patient_admission(request):
         """
         description: Logic for adding new patient admission details
-        params: Data(request),kwargs(patient_id)
+        params: Data(request)
         output: Response(Success or error msg)
         """
         patient = request.data['patient']
         admitted = Admission.objects.filter(patient=patient)
-        if admitted:
-            return Response({'msg': 'Patient is already admitted.'}, status=status.HTTP_400_BAD_REQUEST)
+        for i in admitted:
+            if not i.discharge_date:
+                return Response({'msg': 'Patient is already admitted.'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = CreatePatientAdmissionSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'msg': 'Operation scheduled successfully.'}, status=status.HTTP_201_CREATED)
+            return Response({'msg': 'Patient admission details successfully added.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod

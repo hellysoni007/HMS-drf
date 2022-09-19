@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from account.models import LeaveRequest, User
 from account.queries import get_user_from_id
+from account.services import email_service
 from patients.models import Appointment, TimeSlots, Prescription, Medication
 from patients.serializers import ViewPatientSerializer, PatientRegistrationSerializer, PatientUpdateSerializer, \
     ViewAvailableTimeSlotsSerializer, BookAppointmentSerializer, UpdateAppointmentSerializer, PrescriptionSerializer, \
@@ -53,8 +54,7 @@ class ManagePatientRegistration:
         serializer = PatientRegistrationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(role="Patient")
-            result = Response({'msg': 'Patient registered successfully.'}, status=status.HTTP_201_CREATED)
-            return result
+            return Response({'msg': 'Patient registered successfully.'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
@@ -100,6 +100,30 @@ class ManageTimeSlots:
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+def appointment_success_mail(request, patient):
+    appointment_date = request.data['date']
+    appointment_doctor = request.data['doctor']
+    doctor = get_user_from_id(appointment_doctor)
+    appointment_timeslot = request.data['timeslot']
+    timeslot = TimeSlots.objects.get(id=appointment_timeslot)
+    mail_to = patient.email
+    mail_subject = "Appointment booked successfully"
+    mail_body = f'Dear {patient.first_name},\nYour appointment for Date:{appointment_date} with Doctor:' \
+                f'{doctor.first_name} in Timeslot:{timeslot.start_time} has been ' \
+                f'booked successfully. '
+    email_service([mail_to], mail_subject, mail_body)
+    return request
+
+
+def appointment_cancel_mail(appointment, patient):
+    appointment_date = appointment.date
+    patient = patient
+    mail_to = patient.email
+    mail_subject = "Your appointment has been cancelled"
+    mail_body = f'Dear {patient.first_name},\n Your appointment for date {appointment_date} has been cancelled.'
+    email_service([mail_to], mail_subject, mail_body)
+
+
 class ManageAppointments:
     @staticmethod
     def book_appointment(kwargs, request):
@@ -112,13 +136,14 @@ class ManageAppointments:
         patient = get_user_from_id(patient_id)
         if patient is None:
             return Response({'error': 'Patient does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-        request.data._mutable = True
+        # request.data._mutable = True
         request.data['patient'] = patient.id
-        request.data._mutable = False
+        # request.data._mutable = False
         serializer = BookAppointmentSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'msg': 'Appointment booked successfully.'}, status=status.HTTP_201_CREATED)
+            appointment_success_mail(request, patient)
+            return Response({'msg': 'Appointment booked successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
@@ -130,6 +155,7 @@ class ManageAppointments:
         """
         patient_id = kwargs['pk']
         appointment_id = kwargs['pk1']
+        patient = get_user_from_id(patient_id)
         if get_user_from_id(patient_id) is None:
             return Response({'error': 'Patient does not exist.'}, status=status.HTTP_404_NOT_FOUND)
         try:
@@ -140,7 +166,9 @@ class ManageAppointments:
         serializer = UpdateAppointmentSerializer(appointments, data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response({'msg': 'Patient updated successfully.'}, status=status.HTTP_200_OK)
+            appointment = Appointment.objects.get(id=appointment_id)
+            appointment_cancel_mail(appointment, patient)
+            return Response({'msg': 'Appointment Cancelled successfully.'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @staticmethod
