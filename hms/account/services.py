@@ -17,6 +17,11 @@ from .serializers import (
 
 
 def get_dates(start, end):
+    """
+            description: Logic for getting dates between two dates
+            params: start,end
+            output: date_list
+            """
     step = datetime.timedelta(days=1)
     date_list = []
     while start <= end:
@@ -27,6 +32,11 @@ def get_dates(start, end):
 
 
 def substitute_on_leave(employee_id, date_check):
+    """
+            description: Logic for checking if substitute on leave
+            params: employee_id,date_check
+            output: True or False
+            """
     substitute_leaves = LeaveRequest.objects.filter(employee=employee_id, is_delete=False)
     dates = []
     for leave in substitute_leaves:
@@ -41,8 +51,9 @@ def substitute_on_leave(employee_id, date_check):
 
 def get_method_for_user(user):
     """
-    :param user:
-    :return generated token:
+    description: Logic for generating tokens for the user
+    params: user
+    output: tokens
     """
     refresh = RefreshToken.for_user(user)
 
@@ -54,10 +65,9 @@ def get_method_for_user(user):
 
 def add_address(request, user):
     """
-    Add address(request.data) for user(user)
-    :param request:
-    :param user:
-    :return errors(if Any):
+    description: Logic for adding address for the user
+    params: Data(request),user
+    output: Response(Success or error msg)
     """
     address_serializer = AddressSerializer(data=request.data)
     if address_serializer.is_valid(raise_exception=True):
@@ -70,10 +80,9 @@ def add_address(request, user):
 
 def add_employee_to_room(user, allocated_place):
     """
-    Allocate room(allocated_place) to employee(user)
-    :param user:
-    :param allocated_place:
-    :return room allocated:
+    description: Logic for assigning employee to the room
+    params: user,allocated_place
+    output: room
     """
     get_room = Rooms.objects.get(name=allocated_place)
     get_room.assigned_nurses.add(user)
@@ -83,8 +92,9 @@ def add_employee_to_room(user, allocated_place):
 
 def get_days_to_display():
     """
-    Get today's day and last day of this month
-    :return today's day and last day of the current month:
+    description: Logic for getting today's date and last date of current month
+    params: None
+    output: today's day and last day of the current month
     """
     today_date = datetime.date.today()
     today_day = today_date.day
@@ -93,6 +103,11 @@ def get_days_to_display():
 
 
 def get_leaves_list(request):
+    """
+    description: Logic for getting list of leaves dates
+    params: request
+    output: leaves_dates
+    """
     leaves = LeaveRequest.objects.filter(employee=request.user.id, is_delete=False)
     leaves_dates = []
     for leave in leaves:
@@ -108,6 +123,11 @@ def get_leaves_list(request):
 
 
 def check_is_substitute(check_date, request):
+    """
+    description: Logic for checking if employee is already a substitute for the date
+    params: check_date,request
+    output: substitution id
+    """
     try:
         is_substitute = Substitution.objects.get(for_date=check_date, substitute=request.user.id)
         if is_substitute:
@@ -118,13 +138,22 @@ def check_is_substitute(check_date, request):
 
 
 def get_substitute_shift(shift_id):
-    print(shift_id)
+    """
+    description: Logic for getting shift by id
+    params: shift_id
+    output: data
+    """
     queryset = Shifts.objects.get(id=shift_id)
     serializer = ShiftsSerializer(queryset)
     return serializer.data
 
 
 def create_next_month_schedule(request):
+    """
+    description: Logic for creating next month schedule
+    params: Data(request)
+    output: shift list
+    """
     today_day, month_last_day = get_days_to_display()
     view_shift = MyShift.view_shift(request)
     shift = []
@@ -149,6 +178,11 @@ def create_next_month_schedule(request):
 
 
 def check_user_already_has_shift(user):
+    """
+    description: Logic for checking if user is assigned shift
+    params: user
+    output: True or False
+    """
     return Shifts.objects.filter(employee=user).exists()
 
 
@@ -156,6 +190,11 @@ class LoginRegisterUser:
 
     @staticmethod
     def register_new_user(request):
+        """
+        description: Logic for registering new employee
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             user = serializer.save()
@@ -166,6 +205,11 @@ class LoginRegisterUser:
 
     @staticmethod
     def validate_credentials(request):
+        """
+        description: Logic for validating credentials
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         serializer = UserLoginSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             email = serializer.data.get('email')
@@ -184,11 +228,13 @@ class LoginRegisterUser:
 class ManageShifts:
     @staticmethod
     def add_shift_user(new_request, user, user_id):
+        """
+        description: Logic for assigning shift
+        params: Data(new_request),user,user_id
+        output: Response(Success or error msg)
+        """
         users = User.objects.all().exclude(role='Patient')
-        print(users.values('id'))
         user_list = users.values('id')
-        print(user_list)
-        print(user_id)
         if user not in users:
             return Response({'msg': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not check_user_already_has_shift(user):
@@ -207,6 +253,11 @@ class ManageShifts:
 
 
 def check_is_substitute_today(request):
+    """
+    description: Logic for checking if an employee is already substitute for the data
+    params: Data(request)
+    output: data
+    """
     today = datetime.date.today()
     is_substitute = Substitution.objects.filter(substitute=request.user.id, for_date=today)
     if is_substitute:
@@ -218,13 +269,16 @@ def check_is_substitute_today(request):
         substitute_shift_data["In Place Of"] = in_place
         data = {"substitute_shift": substitute_shift_data}
         return data
-    else:
-        print(False)
 
 
 class MyShift:
     @staticmethod
     def view_shift(request):
+        """
+        description: Logic for displaying log in employee shift
+        params: Data(request)
+        output: Response(Data or error msg)
+        """
         try:
             queryset = Shifts.objects.get(employee=request.user)
         except Shifts.DoesNotExist:
@@ -240,6 +294,11 @@ class MyShift:
 
     @staticmethod
     def monthly_schedule(request):
+        """
+        description: Logic for displaying monthly schedule for log in employee
+        params: Data(request)
+        output: Response(Data or error msg)
+        """
         view_shift = create_next_month_schedule(request)
         queryset = User.objects.get(id=request.user.id)
         serializer = UserSerializer(queryset)
@@ -250,22 +309,29 @@ class MyShift:
 class ManageProfile:
     @staticmethod
     def view_user_profile(request):
+        """
+        description: Logic for displaying log in user profile
+        params: Data(request)
+        output: Response(Data or error msg)
+        """
         queryset = get_user_from_mail(request.user)
         serializer = UserSerializer(queryset)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @staticmethod
     def update_user_profile(request):
+        """
+        description: Logic for updating log in user profile
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         user_queryset = User.objects.get(id=request.user.id)
-        print(user_queryset)
         serializer = UserSerializer(user_queryset, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save(id=request.user.id)
             try:
                 address_queryset = get_address_from_user_id(user_queryset.id)
-                print(address_queryset)
                 if not address_queryset:
-                    print(request.user.id)
                     Address.objects.create(user=request.user)
             except AttributeError:
                 address_queryset = get_address_from_user_id(user_queryset.id)
@@ -280,6 +346,11 @@ class ManageProfile:
 class MyLeaves:
     @staticmethod
     def apply_leave(request):
+        """
+        description: Logic for new leave application
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         user = get_user_from_mail(request.user)
         print(user)
         request.data._mutable = True
@@ -293,6 +364,11 @@ class MyLeaves:
 
     @staticmethod
     def view_leave(request, kwargs):
+        """
+        description: Logic for displaying leaves and leave details for log in employee
+        params: Data(request),kwargs(pk = leave_id)
+        output: Response(Data or error msg)
+        """
         if kwargs:
             try:
                 my_leaves = LeaveRequest.objects.get(id=kwargs['pk'], employee=request.user)
@@ -307,6 +383,11 @@ class MyLeaves:
 
     @staticmethod
     def update_leave(request, leave_id):
+        """
+        description: Logic for updating leave request
+        params: Data(request),leave_id
+        output: Response(Success or error msg)
+        """
         try:
             queryset = LeaveRequest.objects.get(id=leave_id)
             if queryset.employee != request.user:
@@ -326,6 +407,11 @@ class MyLeaves:
 
     @staticmethod
     def delete_leave(request, leave_id):
+        """
+        description: Logic for deleting leave
+        params: Data(request),leave_id
+        output: Response(Success or error msg)
+        """
         try:
             today = datetime.date.today()
             queryset = LeaveRequest.objects.get(id=leave_id)
@@ -344,6 +430,11 @@ class MyLeaves:
 
 
 def get_all_dates(start, end):
+    """
+    description: Logic for getting date between 2 given dates
+    params: start,end(dates)
+    output: date_list
+    """
     step = datetime.timedelta(days=1)
     date_list = []
     while start <= end:
@@ -353,6 +444,11 @@ def get_all_dates(start, end):
 
 
 def get_leaves_for_date(check_date, queryset):
+    """
+    description: Logic for getting leaves for any particular date dates
+    params: check_date,queryset
+    output: leaves in list
+    """
     leaves = []
     for query in queryset:
         start = query.from_date
@@ -366,6 +462,11 @@ def get_leaves_for_date(check_date, queryset):
 class ManageLeaves:
     @staticmethod
     def view_leaves(kwargs, request):
+        """
+        description: Logic for displaying leaves
+        params: Data(request),kwargs(pk = leave_id)(optionale)
+        output: Response(Data or error msg)
+        """
         if kwargs:
             try:
                 queryset = LeaveRequest.objects.get(id=kwargs['pk'])
@@ -384,12 +485,16 @@ class ManageLeaves:
 
     @staticmethod
     def approve_disapprove_leave(kwargs, request):
+        """
+        description: Logic for updating leave approval or disapproval details
+        params: Data(request),kwargs(pk = leave_id)
+        output: Response(Success or error msg)
+        """
         try:
             queryset = LeaveRequest.objects.get(id=kwargs['pk'])
         except LeaveRequest.DoesNotExist:
             return Response({'msg': 'No leave application found'}, status=status.HTTP_404_NOT_FOUND)
         serializer = LeaveRequestSerializer(queryset, data=request.data, partial=True)
-        print(queryset.status)
         if queryset.status == 'ACCEPTED':
             if serializer.is_valid(raise_exception=True):
                 serializer.save()
@@ -412,19 +517,33 @@ class ManageLeaves:
 class ManageSubstitute:
     @staticmethod
     def view_need_of_substitute():
+        """
+        description: Logic for displaying leaves that need substitution
+        params: None
+        output: Response(data or error msg)
+        """
         queryset = LeaveRequest.objects.filter(has_substitute=False, status="ACCEPTED", is_delete=False)
         serializer = LeaveRequestSerializer(queryset, many=True)
-        print(serializer.data)
         return Response({'Leaves left to assign substitute.': serializer.data}, status=status.HTTP_200_OK)
 
     @staticmethod
     def view_all_substitution():
+        """
+        description: Logic for displaying all substitution
+        params: None
+        output: Response(Data or error msg)
+        """
         queryset = Substitution.objects.all()
         serializer = GetSubstitutionSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @staticmethod
     def assign_substitution(kwargs, request):
+        """
+        description: Logic for assigning substitute for employees on leave
+        params: kwargs(leave_id)
+        output: Response(Success or error msg)
+        """
         leave_id = kwargs['pk']
         try:
             get_leave = LeaveRequest.objects.get(id=leave_id)

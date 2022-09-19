@@ -15,6 +15,11 @@ class ManageBills:
 
     @staticmethod
     def new_bill_create_opd(request):
+        """
+        description: Logic for generating bill for opd
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         opd_charges = 0
         total = 0
         bill_details = {}
@@ -43,6 +48,11 @@ class ManageBills:
 
     @staticmethod
     def new_bill_create_operation(request):
+        """
+        description: Logic for generating bill for operations
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         surgery_charge = 0
         admission_charge = 0
         bed_charge = 0
@@ -88,6 +98,11 @@ class ManageBills:
 class ManagePrintingBills:
     @staticmethod
     def print_patient_bill(kwargs):
+        """
+                description: Logic for displaying particular patients bills
+                params: kwargs(patient_id)
+                output: Response(Data or error msg)
+                """
         patient = kwargs['patient_id']
         queryset = Bill.objects.filter(patient=patient).order_by('-date')
         serializer = CreateBillSerializer(queryset, many=True)
@@ -95,6 +110,11 @@ class ManagePrintingBills:
 
     @staticmethod
     def print_today_bills():
+        """
+                description: Logic for displaying today's bills
+                params: None
+                output: Response(Data or error msg)
+                """
         today = datetime.date.today()
         queryset = Bill.objects.filter(date=today)
         serializer = CreateBillSerializer(queryset, many=True)
@@ -102,6 +122,11 @@ class ManagePrintingBills:
 
     @staticmethod
     def print_bill_detail(kwargs):
+        """
+        description: Logic for displaying particular bill
+        params: kwargs(bill_id)
+        output: Response(Data or error msg)
+        """
         bill_id = kwargs['bill_id']
         try:
             queryset = Bill.objects.get(id=bill_id)

@@ -17,6 +17,11 @@ from patients.serializers import ViewAvailableTimeSlotsSerializer, ViewAvailable
 class ManageBedService:
     @staticmethod
     def add_new_bed(request):
+        """
+        description: Logic for adding new bed
+        params: Data(request)
+        output: Response(Success or error)
+        """
         serializer = CreateBedSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -26,6 +31,11 @@ class ManageBedService:
 
     @staticmethod
     def update_existing_bed(kwargs, request):
+        """
+        description: Logic for updating existing bed
+        params: kwargs(bed_id),Data(request)
+        output: Response(Success or error)
+        """
         bed_id = kwargs['id']
         try:
             queryset = Bed.objects.get(id=bed_id)
@@ -41,6 +51,11 @@ class ManageBedService:
 
     @staticmethod
     def update_existing_bed_availability(kwargs, request):
+        """
+        description: Logic for updating existing bed availability
+        params: kwargs(bed_id),Data(request)
+        output: Response(Success or error)
+        """
         bed_id = kwargs['id']
         try:
             queryset = Bed.objects.get(id=bed_id)
@@ -56,6 +71,11 @@ class ManageBedService:
 
     @staticmethod
     def delete_existing_bed(kwargs):
+        """
+        description: Logic for deleting bed
+        params: kwargs(bed_id)
+        output: Response(Success or error)
+        """
         bed_id = kwargs['id']
         try:
             bed = Bed.objects.get(id=bed_id)
@@ -72,6 +92,11 @@ class ManageBedService:
 
     @staticmethod
     def show_all_beds(kwargs):
+        """
+        description: Logic for displaying all beds and bed detail
+        params: kwargs(bed_id)(optional)
+        output: Response(Bed details or error msg)
+        """
         if kwargs:
             bed_id = kwargs['id']
             queryset = Bed.objects.filter(id=bed_id).exclude(is_delete=True)
@@ -85,6 +110,11 @@ class ManageBedService:
 
     @staticmethod
     def show_available_beds(bed_id):
+        """
+        description: Logic for displaying available beds and bed detail
+        params: kwargs(bed_id)(optional)
+        output: Response(Bed details or error msg)
+        """
         if bed_id:
             queryset = Bed.objects.filter(id=bed_id, is_available=True).exclude(is_delete=True)
             print(False)
@@ -98,11 +128,16 @@ class ManageBedService:
 
 
 class ManageTimeSlotsOTService:
+
     @staticmethod
     def get_available_timeslots(request):
+        """
+        description: Logic for displaying all available timeslots for operation
+        params: Data(request)
+        output: Response(Available timeslots)
+        """
         operations = Operation.objects.filter(date=request.data['check-date'], status="SCHEDULED",
                                               doctor=request.data['doctor'])
-        print(operations)
         booked_timeslots = []
         for operation in operations:
             booked_timeslots.append(operation.timeslot.id)
@@ -114,6 +149,11 @@ class ManageTimeSlotsOTService:
 class ManageOperationsService:
     @staticmethod
     def schedule_operations(kwargs, request):
+        """
+        description: Logic for scheduling operation
+        params: Data(request),kwargs(patient_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['patient_id']
         try:
             patient_profile = PatientProfile.objects.get(patient_id=patient_id)
@@ -133,6 +173,11 @@ class ManageOperationsService:
 
     @staticmethod
     def get_scheduled_operations(kwargs):
+        """
+        description: Logic for displaying scheduled operations
+        params: kwargs(patient_id)
+        output: Response(Data)
+        """
         operations = Operation.objects.filter(status='SCHEDULED')
         patients = operations.values('patient')
         users = User.objects.filter(id__in=patients)
@@ -150,8 +195,12 @@ class ManageOperationsService:
 
     @staticmethod
     def get_all_operations_details(op_id):
+        """
+        description: Logic for displaying all operations
+        params: op_id(optional)
+        output: Response(Data or error msg)
+        """
         if op_id:
-            print("True")
             queryset = Operation.objects.filter(id=op_id).order_by('date')
             if not queryset:
                 return Response({"msg": "Operation details not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -163,6 +212,11 @@ class ManageOperationsService:
 
     @staticmethod
     def get_all_operations_today_details(op_id):
+        """
+        description: Logic for displaying all operations for today
+        params: op_id(optional)
+        output: Response(Data or error msg)
+        """
         if op_id:
             queryset = Operation.objects.filter(id=op_id).order_by('date')
             if not queryset:
@@ -175,6 +229,11 @@ class ManageOperationsService:
 
     @staticmethod
     def filter_operations_by_doctor_today(op_id, doctor_id):
+        """
+        description: Logic for filtering operations by doctor for today
+        params: doctor_id, op_id(optional)
+        output: Response(Data or error msg)
+        """
         if op_id:
             queryset = Operation.objects.filter(id=op_id).order_by('date')
             if not queryset:
@@ -189,6 +248,11 @@ class ManageOperationsService:
 
     @staticmethod
     def filter_operations_by_doctor(op_id, doctor_id):
+        """
+        description: Logic for filtering operations by doctor
+        params: doctor_id, op_id(optional)
+        output: Response(Data or error msg)
+        """
         if op_id:
             queryset = Operation.objects.filter(id=op_id).order_by('date')
             if not queryset:
@@ -203,6 +267,11 @@ class ManageOperationsService:
 
     @staticmethod
     def show_my_operations(op_id, doctor_id):
+        """
+        description: Logic for displaying all operations for the log in doctor
+        params: doctor_id,op_id(optional)
+        output: Response(Data or error msg)
+        """
         if op_id:
             queryset = Operation.objects.filter(id=op_id, doctor=doctor_id).order_by('date')
             if not queryset:
@@ -219,6 +288,11 @@ class ManageOperationsService:
 
     @staticmethod
     def show_my_operations_today(op_id, doctor_id):
+        """
+        description: Logic for displaying log in doctors operations for today
+        params: doctor_id, op_id(optional)
+        output: Response(Success or error msg)
+        """
         if op_id:
             queryset = Operation.objects.filter(id=op_id).order_by('date')
         else:
@@ -231,6 +305,11 @@ class ManageOperationsService:
 
     @staticmethod
     def update_operation_status(kwargs, request):
+        """
+        description: Logic for updating operation status
+        params: Data(request),kwargs(op_id)(optional)
+        output: Response(Success or error msg)
+        """
         op_id = kwargs['op_id']
         try:
             queryset = Operation.objects.get(id=op_id)
@@ -247,6 +326,11 @@ class ManagePatientAdmissionService:
 
     @staticmethod
     def new_patient_admission(request):
+        """
+        description: Logic for adding new patient admission details
+        params: Data(request),kwargs(patient_id)
+        output: Response(Success or error msg)
+        """
         patient = request.data['patient']
         admitted = Admission.objects.filter(patient=patient)
         if admitted:
@@ -259,11 +343,16 @@ class ManagePatientAdmissionService:
 
     @staticmethod
     def update_patient_admission(kwargs, request):
+        """
+        description: Logic for updating patient admission details
+        params: Data(request),kwargs(admission_id)
+        output: Response(Success or error msg)
+        """
         today = datetime.datetime.today()
         try:
             queryset = Admission.objects.get(id=kwargs['admission_id'])
             if queryset.discharge_date and queryset.discharge_date.timestamp() < today.timestamp():
-                return Response({'msg': 'Discharge already taken and     discharge time already provided.'},
+                return Response({'msg': 'Discharge already taken and discharge time already provided.'},
                                 status=status.HTTP_400_BAD_REQUEST)
         except Admission.DoesNotExist:
             return Response({'msg': 'Invalid Admission Id.'}, status=status.HTTP_404_NOT_FOUND)
@@ -275,6 +364,11 @@ class ManagePatientAdmissionService:
 
     @staticmethod
     def get_patient_admission_details(kwargs):
+        """
+        description: Logic for displaying patient admission details
+        params: kwargs(admission_id)
+        output: Response(data)
+        """
         try:
             queryset = Admission.objects.get(id=kwargs['admission_id'])
         except Admission.DoesNotExist:
@@ -284,6 +378,11 @@ class ManagePatientAdmissionService:
 
     @staticmethod
     def get_currently_admitted_patients():
+        """
+        description: Logic for displaying all currently admitted patients
+        params: None
+        output: Response
+        """
         today = datetime.date.today()
         queryset = Admission.objects.filter(discharge_date__gte=today)
         serializer = DisplayPatientAdmissionsSerializer(queryset, many=True)
@@ -291,6 +390,11 @@ class ManagePatientAdmissionService:
 
     @staticmethod
     def get_all_admitted_patients():
+        """
+        description: Logic for displaying all admitted patients
+        params: None
+        output: Response
+        """
         queryset = Admission.objects.all().order_by('discharge_date', 'admission_date')
         serializer = DisplayPatientAdmissionsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -300,6 +404,11 @@ class ManageSurgeonAvailabilityService:
 
     @staticmethod
     def get_available_surgeon():
+        """
+        description: Logic for getting all the surgeons
+        params: None
+        output: Response(Data)
+        """
         queryset = Shifts.objects.filter(allocated_place="OT")
         serializer = ViewAvailableDoctorsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -309,6 +418,11 @@ class ManagePatientVisitsService:
 
     @staticmethod
     def add_visit_nurse(kwargs, request):
+        """
+        description: Logic for adding nurse visit details for log in nurse
+        params: Data(request),kwargs(patient_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['patient_id']
         request.data._mutable = True
         request.data['patient'] = patient_id
@@ -332,15 +446,23 @@ class ManagePatientVisitsService:
 
     @staticmethod
     def get_nurse_visit_details(request):
+        """
+        description: Logic for displaying log in nurse visit details
+        params: Data(request)
+        output: Response(Data)
+        """
         user_id = request.user.id
-        print(user_id)
-        print(request.user)
         queryset = NurseVisit.objects.filter(nurse=user_id)
         serializer = CreateNurseVisitSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @staticmethod
     def add_doctor_visit(kwargs, request):
+        """
+        description: Logic for adding visit details by any particular log in doctor for any particular patient
+        params: Data(request),kwargs(patient_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['patient_id']
         request.data._mutable = True
         request.data['patient'] = patient_id
@@ -363,6 +485,11 @@ class ManagePatientVisitsService:
 
     @staticmethod
     def get_doctor_visit_details(request):
+        """
+        description: Logic for displaying log in doctors visits
+        params: Data(request)
+        output: Response(Data)
+        """
         user_id = request.user.id
         queryset = DoctorsVisit.objects.filter(Q(doctor=user_id) | Q(surgeon=user_id))
         serializer = CreateDoctorsVisitSerializer(queryset, many=True)
@@ -370,6 +497,11 @@ class ManagePatientVisitsService:
 
     @staticmethod
     def get_visit_details_by_patient(kwargs):
+        """
+        description: Logic for displaying all doctor and nurse visit details of a patient
+        params: kwargs(patient_id)
+        output: Response(Data or error msg)
+        """
         patient = kwargs['patient_id']
         operation = Operation.objects.filter(patient=patient)
         if not operation:
@@ -389,6 +521,11 @@ class ManagePatientDetails:
 
     @staticmethod
     def get_operation_details(kwargs):
+        """
+        description: Logic for displaying patients operation details
+        params: kwargs(patient_id)
+        output: Response(Patient Operation details)
+        """
         patients_profile = PatientProfile.objects.all()
         patients = patients_profile.values('patient_id')
         users = User.objects.filter(id__in=patients)

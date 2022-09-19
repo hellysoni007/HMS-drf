@@ -10,17 +10,19 @@ from patients.serializers import ViewPatientSerializer, PatientRegistrationSeria
 
 
 def get_on_leaves_dates(doctor):
+    """
+    description: Logic for getting date when a particular doctor is on leave
+    params: doctor
+    output: leaves(list)
+    """
     doctor_id = doctor.id
-    print(f'DOCTOR id {doctor_id}')
     on_leave = LeaveRequest.objects.filter(employee=doctor_id, status="ACCEPTED", is_delete=False).order_by('from_date')
-    print(on_leave)
     leaves = []
     for leave in on_leave:
         start = leave.from_date
         end = leave.to_date
         delta = datetime.timedelta(days=1)
         while start <= end:
-            print(end.strftime("%Y-%m-%d"))
             leaves.append(end)
             start += delta
     return leaves
@@ -29,6 +31,11 @@ def get_on_leaves_dates(doctor):
 class ManagePatientRegistration:
     @staticmethod
     def view_patients(kwargs):
+        """
+        description: Logic for displaying all patients
+        params: kwargs(pk)(optional)
+        output: Response(Data or error msg)
+        """
         if kwargs:
             queryset = User.objects.filter(id=kwargs['pk'])
         else:
@@ -38,6 +45,11 @@ class ManagePatientRegistration:
 
     @staticmethod
     def register_patient(request):
+        """
+        description: Logic for registering new patient
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         serializer = PatientRegistrationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(role="Patient")
@@ -47,6 +59,11 @@ class ManagePatientRegistration:
 
     @staticmethod
     def update_patient_profile(kwargs, request):
+        """
+        description: Logic for updating patient profile
+        params: Data(request),kwargs(pk)
+        output: Response(Success or error msg)
+        """
         try:
             queryset = User.objects.get(id=kwargs['pk'], role="Patient")
         except User.DoesNotExist:
@@ -61,8 +78,12 @@ class ManagePatientRegistration:
 class ManageTimeSlots:
     @staticmethod
     def get_available_timeslots(request):
+        """
+        description: Logic for displaying available timeslots
+        params: Data(request)
+        output: Response(Data or error msg)
+        """
         try:
-            print(request.data)
             doctor = User.objects.get(id=request.data['doctor'])
         except User.DoesNotExist:
             return Response({'msg': 'Doctor not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -82,6 +103,11 @@ class ManageTimeSlots:
 class ManageAppointments:
     @staticmethod
     def book_appointment(kwargs, request):
+        """
+        description: Logic for booking appointment for a patient
+        params: Data(request), kwargs(pk = patient_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['pk']
         patient = get_user_from_id(patient_id)
         if patient is None:
@@ -97,6 +123,11 @@ class ManageAppointments:
 
     @staticmethod
     def cancel_appointment(kwargs, request):
+        """
+        description: Logic for cancelling appointment for a patient
+        params: Data(request),kwargs(patient_id,appointment_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['pk']
         appointment_id = kwargs['pk1']
         if get_user_from_id(patient_id) is None:
@@ -114,6 +145,11 @@ class ManageAppointments:
 
     @staticmethod
     def show_today_appointments():
+        """
+        description: Logic for displaying today's appointments
+        params: None
+        output: Response(Data)
+        """
         today = datetime.date.today()
         queryset = Appointment.objects.filter(date=today).order_by('timeslot')
         serializer = AppointmentsSerializer(queryset, many=True)
@@ -121,12 +157,22 @@ class ManageAppointments:
 
     @staticmethod
     def show_all_appointments():
+        """
+        description: Logic for displaying all appointments
+        params: None
+        output: Response(Data)
+        """
         queryset = Appointment.objects.all().order_by('-date', 'timeslot')
         serializer = AppointmentsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @staticmethod
     def filter_doctors_appointments(doctor):
+        """
+        description: Logic for filtering doctor's appointments
+        params: doctor
+        output: Response(Data or error msg)
+        """
         doctor_exists = User.objects.filter(first_name=doctor, role="Doctor").exists()
         today = datetime.date.today()
         if doctor_exists:
@@ -143,6 +189,11 @@ class ManageAppointments:
 class ManagePrescription:
     @staticmethod
     def generate_new_prescription(request):
+        """
+        description: Logic for generating new prescription
+        params: Data(request)
+        output: Response(Success or error msg)
+        """
         serializer = PrescriptionSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
@@ -151,6 +202,11 @@ class ManagePrescription:
 
     @staticmethod
     def add_medicine_to_prescription(kwargs, request):
+        """
+        description: Logic for adding new medicine to prescription
+        params: kwargs(prescription_id),request(Data)
+        output: Response(Success or error msg)
+        """
         prescription_id = kwargs['id']
         try:
             Prescription.objects.get(id=prescription_id)
@@ -165,6 +221,11 @@ class ManagePrescription:
 
     @staticmethod
     def update_existing_medicine(kwargs, request):
+        """
+        description: Logic for updating existing medicine in the prescription
+        params: kwargs(prescription_id,medication_id),request(Data)
+        output: Response(Success or error msg)
+        """
         prescription_id = kwargs['id1']
         medication_id = kwargs['id2']
         try:
@@ -180,6 +241,11 @@ class ManagePrescription:
 
     @staticmethod
     def remove_medicine_from_prescription(kwargs):
+        """
+        description: Logic for removing medicine from prescription
+        params: kwargs(prescription_id,medication_id)
+        output: Response(Success or error msg)
+        """
         prescription_id = kwargs['id1']
         medication_id = kwargs['id2']
         try:
@@ -191,9 +257,14 @@ class ManagePrescription:
 
     @staticmethod
     def show_prescription(kwargs):
+        """
+        description: Logic for displaying prescription for particular patient
+        params: kwargs(patient_id)
+        output: Response(Data)
+        """
         patient_id = kwargs['patient_id']
         try:
-            patient = User.objects.get(id=patient_id)
+            User.objects.get(id=patient_id)
         except User.DoesNotExist:
             return Response({"msg": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -210,6 +281,11 @@ class ManagePrescription:
 class ManagePatientDetails:
     @staticmethod
     def update_medical_profile(kwargs, request):
+        """
+        description: Logic for updating patient profile
+        params: request(Data),kwargs(patient_id)
+        output: Response(Success or error msg)
+        """
         patient_id = kwargs['id']
         try:
             appointment = Appointment.objects.get(patient=patient_id, status="SCHEDULED")
