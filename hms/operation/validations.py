@@ -7,6 +7,9 @@ from patients.services import get_on_leaves_dates
 
 
 def bed_exists(name, room):
+    """
+    Returns bed object if bed exists
+    """
     try:
         bed = Bed.objects.get(name=name, room=room)
         return bed
@@ -15,7 +18,9 @@ def bed_exists(name, room):
 
 
 def check_appointment_date(date, doctor):
-    print(f'DATE {date}')
+    """
+    check if appointment for the selected doctor is valid or not
+    """
     if date < datetime.date.today():
         raise serializers.ValidationError(
             "Date entered is not valid.")
