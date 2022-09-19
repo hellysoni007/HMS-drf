@@ -11,6 +11,6 @@ urlpatterns = [
     path('<int:patient_id>', PrintPatientBillView.as_view(), name="get-all-bills-by-patient"),
     path('<int:patient_id>/<int:bill_id>', BillDetailView.as_view(), name="print-bill"),
     path('today/', TodayBillsView.as_view(), name="get-all-todays-bills"),
-    path('today/<int:bill_id>', BillDetailView.as_view(), name="print-bill"),
+    path('today/<int:bill_id>', BillDetailView.as_view(), name="print-today-bill-details"),
 
 ]

@@ -75,6 +75,7 @@ class ManageBedService:
         if kwargs:
             bed_id = kwargs['id']
             queryset = Bed.objects.filter(id=bed_id).exclude(is_delete=True)
+            print(queryset)
             if not queryset:
                 return Response({'msg': 'Bed not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
@@ -86,7 +87,9 @@ class ManageBedService:
     def show_available_beds(bed_id):
         if bed_id:
             queryset = Bed.objects.filter(id=bed_id, is_available=True).exclude(is_delete=True)
+            print(False)
             if not queryset:
+                print(True)
                 return Response({'msg': 'Bed not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
             queryset = Bed.objects.filter(is_available=True, is_delete=False)
@@ -119,8 +122,9 @@ class ManageOperationsService:
                                 status=status.HTTP_400_BAD_REQUEST)
         except PatientProfile.DoesNotExist:
             return Response({'error-msg': 'Invalid patient Id.'}, status=status.HTTP_404_NOT_FOUND)
-
+        request.data._mutable = True
         request.data['patient'] = patient_id
+        request.data._mutable = False
         serializer = ScheduleOperationSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(status='SCHEDULED')
@@ -179,7 +183,7 @@ class ManageOperationsService:
             today = datetime.date.today()
             queryset = Operation.objects.filter(doctor=doctor_id, date=today)
             if not queryset:
-                return Response({"msg": "Operation details not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"msg": "No Operations for today"}, status=status.HTTP_400_BAD_REQUEST)
         serializer = ShowAllOperationsSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -306,16 +310,19 @@ class ManagePatientVisitsService:
     @staticmethod
     def add_visit_nurse(kwargs, request):
         patient_id = kwargs['patient_id']
+        request.data._mutable = True
         request.data['patient'] = patient_id
         request.data['nurse'] = request.user.id
+        request.data._mutable = False
         try:
             operation = Operation.objects.get(patient=patient_id)
         except Operation.DoesNotExist:
             return Response({'msg': 'Patient is not operated or invalid patient details.'},
                             status=status.HTTP_404_NOT_FOUND)
         surgeon = operation.doctor
+        request.data._mutable = True
         request.data['surgeon'] = surgeon.id
-
+        request.data._mutable = False
         serializer = CreateNurseVisitSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save(is_medication_provided=True)
@@ -335,15 +342,19 @@ class ManagePatientVisitsService:
     @staticmethod
     def add_doctor_visit(kwargs, request):
         patient_id = kwargs['patient_id']
+        request.data._mutable = True
         request.data['patient'] = patient_id
         request.data['doctor'] = request.user.id
+        request.data._mutable = False
         try:
             operation = Operation.objects.get(patient=patient_id)
         except Operation.DoesNotExist:
             return Response({'msg': 'Patient is not operated or invalid patient details.'},
                             status=status.HTTP_404_NOT_FOUND)
         surgeon = operation.doctor
+        request.data._mutable = True
         request.data['surgeon'] = surgeon.id
+        request.data._mutable = False
         serializer = CreateDoctorsVisitSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             serializer.save()

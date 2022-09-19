@@ -14,7 +14,8 @@ urlpatterns = [
     path('<int:op_id>/update/', UpdateOperationDetailView.as_view(), name="update-operations-detail"),  # Done
     path('today/', ShowTodayOperationView.as_view(), name="view-todays-operations"),  # Done
     path('<int:doctor_id>/', ShowDoctorOperationView.as_view(), name="view-doctors-operations"),  # Done
-    path('<int:doctor_id>/today/', ShowTodayDoctorOperationView.as_view(), name="view-doctors-operations"),  # Done
+    path('<int:doctor_id>/today/', ShowTodayDoctorOperationView.as_view(), name="view-doctors-operations-today"),
+    # Done
     path('my-operations/', ShowDoctorListOperationView.as_view(), name="view-my-operations"),  # Done
     path('my-operations/today/', ShowDoctorListOperationTodayView.as_view(), name="view-my-operations-today"),  # Done
 
@@ -37,7 +38,7 @@ urlpatterns = [
     path('available-timeslots/', DisplayAvailableOTTimeslots.as_view(), name="view-available-timeslots"),  # Done
 
     path('admit-patient/create/', CreatePatientAdmissionDetailsView.as_view(),
-         name="create-update-admit-patient"),  # Done
+         name="create-admit-patient"),  # Done
     path('admit-patient/<int:admission_id>/', ShowPatientAdmissionDetailsView.as_view(),
          name="view-admissions-detail"),  # Done
     path('admit-patient/<int:admission_id>/update', UpdatePatientAdmissionDetailsView.as_view(),

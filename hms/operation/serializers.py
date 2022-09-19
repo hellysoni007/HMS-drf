@@ -82,7 +82,7 @@ class DisplayBedSerializer(serializers.ModelSerializer):
 class ScheduleOperationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Operation
-        fields = ['doctor', 'patient', 'operation-name', 'date', 'timeslot', 'status']
+        fields = ['doctor', 'patient', 'operation_name', 'date', 'timeslot', 'status']
         read_only_fields = ['status']
 
     def validate(self, attrs):
@@ -107,7 +107,6 @@ class ScheduleOperationSerializer(serializers.ModelSerializer):
                 "Invalid date.")
 
         if not check_appointment_date(date, doctor):
-            print("Operation not scheduled")
             raise serializers.ValidationError(
                 "Doctor unavailable.")
 
@@ -115,7 +114,6 @@ class ScheduleOperationSerializer(serializers.ModelSerializer):
 
         # check timeslot for operation
         if timeslot.id not in range(31, 39, 1):
-            print(timeslot.id)
             raise serializers.ValidationError(
                 "Enter valid timeslot for operation.")
 
@@ -132,7 +130,7 @@ class ShowAllOperationsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Operation
-        fields = ['doctor', 'patient', 'operation-name', 'date', 'timeslot', 'status']
+        fields = ['doctor', 'patient', 'operation_name', 'date', 'timeslot', 'status']
 
 
 class UpdateOperationsSerializer(serializers.ModelSerializer):
@@ -223,7 +221,7 @@ class DisplayPatientAdmissionsSerializer(serializers.ModelSerializer):
 class DisplayPatientOperationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Operation
-        fields = ['patient', 'operation-name', 'date', 'timeslot', 'status', 'instructions']
+        fields = ['patient', 'operation_name', 'date', 'timeslot', 'status', 'instructions']
 
 
 class ShowNurseVisitSerializer(serializers.ModelSerializer):

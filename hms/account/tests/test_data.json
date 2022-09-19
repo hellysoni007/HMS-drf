@@ -1,0 +1,141 @@
+{
+  "create_shift_fixture_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "OT"
+  },
+  "create_nurse_shift_fixture_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "A"
+  },
+  "leave_create_fixture_data": {
+    "from_date": "2022-12-28",
+    "to_date": "2022-12-29",
+    "reason": "For Cousin's marriage"
+  },
+  "approve_leave_fixture_data": {
+    "status": "ACCEPTED"
+  },
+  "login_admin_data": {
+    "email": "test1@gmail.com",
+    "password": "Admin@123"
+  },
+  "login_admin1_data": {
+    "email": "test1@gmail.com",
+    "password": "Admin@123"
+  },
+  "test_login_user_valid_data": {
+    "email": "test1@gmail.com",
+    "password": "Admin@123"
+  },
+  "test_login_user_invalid_1_data": {
+    "email": "test1@gmail.com",
+    "password": "Admin@@123"
+  },
+  "test_login_user_invalid_2_data": {
+    "email": "test1@gmail.com"
+  },
+  "test_create_user_1_data": {
+    "email": "surgeon8@gmail.com",
+    "first_name": "Surgeon 8",
+    "last_name": "create",
+    "contact": "918905136688",
+    "birthdate": "2001-08-09",
+    "gender": "FEMALE",
+    "role": "Surgeon",
+    "password": "Abc@123",
+    "password2": "Abc@123",
+    "joining_date": "2022-08-07",
+    "qualifications": "None",
+    "speciality": "None",
+    "experiance_in_years": "None",
+    "block_no": "4",
+    "building_name": "Prerna Apartment",
+    "city": "Vadodara",
+    "state": "Gujarat",
+    "country": "India",
+    "pincode": "362001"
+  },
+  "test_create_user_2_data": {
+    "email": "surgeon8@gmail.com",
+    "first_name": "Surgeon 8",
+    "last_name": "create",
+    "contact": "918905136688",
+    "birthdate": "2001-08-09",
+    "gender": "FEMALE",
+    "role": "Surgeon",
+    "password": "Abc@123",
+    "password2": "Abc@123",
+    "joining_date": "2022-08-07",
+    "qualifications": "None",
+    "speciality": "None",
+    "experiance_in_years": "None",
+    "block_no": "4",
+    "building_name": "Prerna Apartment",
+    "city": "Vadodara",
+    "state": "Gujarat",
+    "country": "India",
+    "pincode": "362001"
+  },
+  "test_create_shift_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "A"
+  },
+  "test_create_shift_1_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "OT"
+  },
+  "test_create_shift_2_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "OT"
+  },
+  "test_update_my_profile_data": {
+    "first_name": "Nurse 1",
+    "last_name": "Nurse",
+    "role": "Nurse",
+    "birthdate": "2001-08-09",
+    "contact": "91789456123",
+    "joining_date": "2022-08-18",
+    "gender": "MALE",
+    "qualifications": "MBBS",
+    "block_no": "3",
+    "building_name": "Shiv Building",
+    "city": "Vadodara",
+    "state": "Gujarat",
+    "country": "India",
+    "pincode": "364001"
+  },
+  "test_leave_create_view_data": {
+    "from_date": "2022-12-28",
+    "to_date": "2022-12-29",
+    "reason": "For Cousin's marriage"
+  },
+  "test_leave_create_view1_data": {
+    "from_date": "2022-09-5",
+    "to_date": "2022-09-6",
+    "reason": "For Cousin's marriage"
+  },
+  "test_leave_create_view2_data": {
+    "from_date": "2022-09-16",
+    "to_date": "2022-09-15",
+    "reason": "For Cousin's marriage"
+  },
+  "test_leave_update_view_data": {
+    "to_date": "2022-12-30"
+  },
+  "status_accepted_data": {
+    "status": "ACCEPTED"
+  },
+  "status_rejected_data": {
+    "status": "REJECTED"
+  }
+}

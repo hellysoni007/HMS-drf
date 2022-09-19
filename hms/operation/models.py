@@ -25,7 +25,7 @@ OPERATION_STATUS = [('SCHEDULED', 'SCHEDULED'), ('COMPLETED', 'COMPLETED')]
 class Operation(models.Model):
     doctor = models.ForeignKey(User, related_name='operated_by', on_delete=models.CASCADE)
     patient = models.ForeignKey(User, related_name='operated_patient', on_delete=models.CASCADE)
-    name = models.CharField(max_length=50, name="operation-name")
+    name = models.CharField(max_length=50, name="operation_name")
     date = models.DateField(null=False, blank=False)
     timeslot = models.ForeignKey(TimeSlots, related_name='timeslot', on_delete=models.CASCADE)
     status = models.CharField(max_length=9, choices=OPERATION_STATUS, default='NA')

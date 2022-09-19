@@ -4,8 +4,9 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from account.models import User
-from billing.models import SURGERY_CHARGE, ADMISSION_CHARGE
+from billing.models import SURGERY_CHARGE, ADMISSION_CHARGE, Bill
 from billing.serializers import CreateBillSerializer
+
 from operation.models import Operation, Admission
 from patients.models import Appointment
 
@@ -82,3 +83,29 @@ class ManageBills:
                             bill_details=bill_details)
             return Response({'msg': 'Bill generated Successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ManagePrintingBills:
+    @staticmethod
+    def print_patient_bill(kwargs):
+        patient = kwargs['patient_id']
+        queryset = Bill.objects.filter(patient=patient).order_by('-date')
+        serializer = CreateBillSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def print_today_bills():
+        today = datetime.date.today()
+        queryset = Bill.objects.filter(date=today)
+        serializer = CreateBillSerializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @staticmethod
+    def print_bill_detail(kwargs):
+        bill_id = kwargs['bill_id']
+        try:
+            queryset = Bill.objects.get(id=bill_id)
+        except Bill.DoesNotExist:
+            return Response({'msg': 'Bill does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = CreateBillSerializer(queryset)
+        return Response(serializer.data, status=status.HTTP_200_OK)

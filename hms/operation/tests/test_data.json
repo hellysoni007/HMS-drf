@@ -1,0 +1,26 @@
+{
+  "create_shift_fixture_data": {
+    "allocated_shift": "2",
+    "shift_start": "15:00:00",
+    "shift_end": "19:00:00",
+    "allocated_place": "OT"
+  },
+  "charges_per_day_data": {
+    "charges_per_day": 200
+  },
+  "is_available_data": {
+    "is_available": "True"
+  },
+  "status_completed_data": {
+    "status": "COMPLETED"
+  },
+  "test_update_patient_admission_data": {
+    "discharge_date": "2022-09-16"
+  },
+  "test_update_patient_admission2_data": {
+    "discharge_date": "2022-09-13"
+  },
+  "is_normal_data": {
+    "is_normal": True
+  }
+}
