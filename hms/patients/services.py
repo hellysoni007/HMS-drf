@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from account.models import LeaveRequest, User
 from account.queries import get_user_from_id
-from account.services import email_service
+from .tasks import email_service
 from patients.models import Appointment, TimeSlots, Prescription, Medication
 from patients.serializers import ViewPatientSerializer, PatientRegistrationSerializer, PatientUpdateSerializer, \
     ViewAvailableTimeSlotsSerializer, BookAppointmentSerializer, UpdateAppointmentSerializer, PrescriptionSerializer, \
@@ -111,7 +111,7 @@ def appointment_success_mail(request, patient):
     mail_body = f'Dear {patient.first_name},\nYour appointment for Date:{appointment_date} with Doctor:' \
                 f'{doctor.first_name} in Timeslot:{timeslot.start_time} has been ' \
                 f'booked successfully. '
-    email_service([mail_to], mail_subject, mail_body)
+    email_service.delay([mail_to], mail_subject, mail_body)
     return request
 
 
@@ -121,7 +121,7 @@ def appointment_cancel_mail(appointment, patient):
     mail_to = patient.email
     mail_subject = "Your appointment has been cancelled"
     mail_body = f'Dear {patient.first_name},\n Your appointment for date {appointment_date} has been cancelled.'
-    email_service([mail_to], mail_subject, mail_body)
+    email_service.delay([mail_to], mail_subject, mail_body)
 
 
 class ManageAppointments:
@@ -161,7 +161,7 @@ class ManageAppointments:
         try:
             appointments = Appointment.objects.get(id=appointment_id, status="SCHEDULED")
         except Appointment.DoesNotExist as e:
-            return Response({'error': 'No Scheduled appointment found. Book a fresh appointment'},
+            return Response({'error': 'No Scheduled appointment found.'},
                             status=status.HTTP_404_NOT_FOUND)
         serializer = UpdateAppointmentSerializer(appointments, data=request.data)
         if serializer.is_valid(raise_exception=True):

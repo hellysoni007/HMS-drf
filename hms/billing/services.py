@@ -2,6 +2,7 @@ import datetime
 
 from rest_framework import status
 from rest_framework.response import Response
+from .tasks import email_service
 
 from account.models import User
 from account.queries import get_user_from_id
@@ -42,7 +43,14 @@ class ManageBills:
             opd_charges = 500
             total = opd_charges
         if serializer.is_valid(raise_exception=True):
-            serializer.save(opd_charge=opd_charges, total_charge=total, bill_details=bill_details)
+            bill_created = serializer.save(opd_charge=opd_charges, total_charge=total, bill_details=bill_details)
+            mail_body = "Bill details: " + '\n' + f'Bill Date: {datetime.date.today()}\nBill Id : {bill_created.id}\n' \
+                                                  f'Bed charge : ' \
+                                                  f'{bill_created.bed_charge}\nSurgery Charge : ' \
+                                                  f'{bill_created.surgery_charge}\nAdmission ' \
+                                                  f'Charge : {bill_created.admission_charge}\nOPD Charge : ' \
+                                                  f'{bill_created.opd_charge}\nTotal : {bill_created.total_charge}'
+            email_service.delay([bill_created.patient.email], "Your today's bill", mail_body)
             return Response({'msg': 'Bill generated Successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -87,9 +95,17 @@ class ManageBills:
             }
             total = surgery_charge + admission_charge + bed_charge
         if serializer.is_valid(raise_exception=True):
-            serializer.save(surgery_charge=surgery_charge, admission_charge=admission_charge, bed_charge=bed_charge,
-                            total_charge=total,
-                            bill_details=bill_details)
+            bill_created = serializer.save(surgery_charge=surgery_charge, admission_charge=admission_charge,
+                                           bed_charge=bed_charge,
+                                           total_charge=total,
+                                           bill_details=bill_details)
+            mail_body = "Bill details: " + '\n' + f'Bill Date: {datetime.date.today()}\nBill Id : {bill_created.id}\n' \
+                                                  f'Bed charge : ' \
+                                                  f'{bill_created.bed_charge}\nSurgery Charge : ' \
+                                                  f'{bill_created.surgery_charge}\nAdmission ' \
+                                                  f'Charge : {bill_created.admission_charge}\nOPD Charge : ' \
+                                                  f'{bill_created.opd_charge}\nTotal : {bill_created.total_charge}'
+            email_service.delay([bill_created.patient.email], "Your today's bill", mail_body)
             return Response({'msg': 'Bill generated Successfully'}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

@@ -1,7 +1,6 @@
 import datetime
 import calendar
-from django.conf import settings
-from django.core.mail import send_mail
+from .tasks import email_service
 
 from django.contrib.auth import authenticate
 from rest_framework import status
@@ -18,16 +17,6 @@ from .serializers import (
     AddressSerializer,
     ShiftsSerializer,
     UserSerializer, LeavesSerializer, LeaveRequestSerializer, GetSubstitutionSerializer, SubstitutionSerializer)
-
-
-def email_service(to, subject, body):
-    send_mail(
-        subject,
-        body,
-        settings.EMAIL_HOST_USER,
-        to,
-        fail_silently=False,
-    )
 
 
 def get_dates(start, end):
@@ -213,7 +202,7 @@ class LoginRegisterUser:
             add_address(request, user)
             mail_body = USER_REGISTRATION_SUCCESS_MAIL_MSG + f'\nYour Credentials are:\nEmail: {mail_to}\nPassword: ' \
                                                              f'{password}'
-            email_service([mail_to], USER_REGISTRATION_SUCCESS_MSG, mail_body)
+            email_service.delay([mail_to], USER_REGISTRATION_SUCCESS_MSG, mail_body)
             return Response({'msg': USER_REGISTRATION_SUCCESS_MSG},
                             status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -580,6 +569,6 @@ class ManageSubstitute:
             get_leave.has_substitute = True
             get_leave.save()
             mail_body = f'You are assigned substitution duty on {check_date} for shift :{get_shift.id}'
-            email_service([request.data['substitute']], SUBSTITUTION_ASSIGNED_SUBJECT, mail_body)
+            email_service.delay([request.data['substitute']], SUBSTITUTION_ASSIGNED_SUBJECT, mail_body)
             return Response({'msg': SUBSTITUTION_SUCCESS}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

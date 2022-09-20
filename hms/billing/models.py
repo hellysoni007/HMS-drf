@@ -1,6 +1,6 @@
 from django.db import models
 
-from account.models import User, Rooms
+from account.models import User
 
 ADMISSION_CHARGE = 5000
 SURGERY_CHARGE = 10000

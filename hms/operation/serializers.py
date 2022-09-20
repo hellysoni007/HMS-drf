@@ -5,7 +5,7 @@ from rest_framework import serializers
 from account.models import Rooms, User
 from account.queries import get_user_from_id
 from account.serializers import AddressSerializer
-from account.services import email_service
+from .tasks import email_service
 from operation.models import Bed, Operation, Admission, NurseVisit, DoctorsVisit
 from operation.validations import bed_exists, check_appointment_date
 from patients.models import PatientProfile
@@ -199,7 +199,7 @@ class CreatePatientAdmissionSerializer(serializers.ModelSerializer):
         mail_body = f'Dear {patient.first_name},\nYour operation of {operation_obj.operation_name} is scheduled on' \
                     f' {operation_obj.date} by Doctor:' \
                     f'{operation_obj.doctor.first_name}. And you need to get admitted for the same on {admission_date}'
-        email_service([mail_to], mail_subject, mail_body)
+        email_service.delay([mail_to], mail_subject, mail_body)
         return created_obj
 
 

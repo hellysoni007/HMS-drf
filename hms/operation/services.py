@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from account.models import Shifts, User
 from account.queries import get_user_from_id
-from account.services import email_service
+from .tasks import email_service
 from operation.models import Bed, Operation, Admission, NurseVisit, DoctorsVisit
 from operation.serializers import CreateBedSerializer, UpdateBedSerializer, UpdateBedAvailabilitySerializer, \
     DisplayBedSerializer, ScheduleOperationSerializer, ShowAllOperationsSerializer, UpdateOperationsSerializer, \
@@ -160,7 +160,7 @@ def operation_scheduled_mail(patient, data):
     mail_body = f'Dear {patient.first_name},\nYour operation of {operation_name} is scheduled on {operation_date} ' \
                 f'by Doctor:' \
                 f'{doctor.first_name} at time:{timeslot.start_time}'
-    email_service([mail_to], mail_subject, mail_body)
+    email_service.delay([mail_to], mail_subject, mail_body)
 
 
 class ManageOperationsService:
