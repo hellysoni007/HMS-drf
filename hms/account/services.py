@@ -242,14 +242,20 @@ class ManageShifts:
         if user not in users:
             return Response({'msg': 'Employee not found.'}, status=status.HTTP_404_NOT_FOUND)
         if not check_user_already_has_shift(user):
-            new_request.data._mutable = True
+            # new_request.data._mutable = True
             new_request.data['employee'] = user_id
-            new_request.data._mutable = False
+            # new_request.data._mutable = False
             shift_serializer = ShiftsSerializer(data=new_request.data)
             if shift_serializer.is_valid(raise_exception=True):
                 shift_serializer.save()
                 if user.role == 'Nurse':
                     add_employee_to_room(user, new_request.data['allocated_place'])
+                shift_start = new_request.data['shift_start']
+                shift_end = new_request.data['shift_end']
+                place = new_request.data['allocated_place']
+                mail_msg = f'Hello {user.first_name},\nYour shift details are as follows:\nShift start time:' \
+                           f'{shift_start}\nShift End time: {shift_end}\nAllocated place: {place}'
+                email_service.delay([user.email], "Your shift Details", mail_msg)
                 return Response({'msg': SHIFT_ASSIGNED_SUCCESS},
                                 status=status.HTTP_201_CREATED)
             return Response(shift_serializer.errors, status=status.HTTP_400_BAD_REQUEST)

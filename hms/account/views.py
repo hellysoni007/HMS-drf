@@ -5,8 +5,10 @@ from rest_framework.views import APIView
 from .models import User, Shifts, LeaveRequest
 from .permissions import IsDoctor, IsNurse, IsSurgeon, IsReceptionist, IsAdmin
 from .queries import get_user_from_id, get_all_rooms
-from .serializers import UserSerializer, RoomSerializer, ShiftsSerializer, LeaveRequestSerializer
+from .serializers import UserSerializer, RoomSerializer, ShiftsSerializer, LeaveRequestSerializer, \
+    ShiftsUpdateSerializer
 from .services import LoginRegisterUser, ManageShifts, MyShift, ManageProfile, MyLeaves, ManageLeaves, ManageSubstitute
+from .tasks import email_service
 
 
 class UserRegistrationView(APIView):
@@ -16,6 +18,7 @@ class UserRegistrationView(APIView):
     params: first_name,last_name,email,contact,role,DOB,password,password2,gender (as request data)
     output: displays msg for registration success or fail
     """
+
     def post(self, request):
         register_user = LoginRegisterUser.register_new_user(request)
         return register_user
@@ -70,7 +73,7 @@ class EmployeeShiftView(generics.ListAPIView):
         return view_shift
 
 
-class ShiftCreateView(generics.ListCreateAPIView):
+class ShiftCreateView(generics.ListCreateAPIView, generics.UpdateAPIView):
     permission_classes = [IsAdmin]
 
     """
@@ -86,6 +89,29 @@ class ShiftCreateView(generics.ListCreateAPIView):
         user = get_user_from_id(kwargs['pk'])
         add_shift = ManageShifts.add_shift_user(request, user, user_id=kwargs['pk'])
         return add_shift
+
+    def put(self, request, *args, **kwargs):
+        """
+        description: Assign shifts to new employees.
+        params: pk(employee id)
+        output: success msg
+        """
+        employee = kwargs['pk']
+        try:
+            queryset = Shifts.objects.get(employee=employee)
+        except Shifts.DoesNotExist:
+            return Response({'msg': 'Employee does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ShiftsUpdateSerializer(queryset, data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            shift = serializer.save()
+            mail_msg = f'Hello {shift.employee.first_name},\nYour new shift details are as follows:\nShift start ' \
+                       f'time:' \
+                       f'{shift.shift_start}\nShift End time: {shift.shift_end}\nAllocated place: ' \
+                       f'{shift.allocated_place}'
+            print(mail_msg)
+            email_service.delay([shift.employee.email], "Your shift has been changed", mail_msg)
+            return Response({'msg': 'Shift updated successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request, *args, **kwargs):
         """

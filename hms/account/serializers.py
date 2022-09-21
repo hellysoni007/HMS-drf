@@ -81,6 +81,12 @@ class ShiftsSerializer(serializers.ModelSerializer):
                 "Allocation place does not match the role.")
 
 
+class ShiftsUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shifts
+        fields = ['employee', 'allocated_shift', 'shift_start', 'shift_end', 'allocated_place']
+
+
 class LeaveRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveRequest
